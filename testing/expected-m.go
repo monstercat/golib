@@ -114,7 +114,7 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 				// We don't really care about Go types for checking JSON
 				// This lets us do {"numberField": 0} without having to do float64(0)
 				if fmt.Sprintf("%v", actualValue) == fmt.Sprintf("%v", expectedValue) {
-					return nil
+					continue
 				}
 				return errors.New(msg)
 			}
