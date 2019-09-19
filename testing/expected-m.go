@@ -128,15 +128,19 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 
 func CheckDate(expectedStr string, format string) func(i interface{}) error {
 	return func(json interface{}) error {
+		loc, _ := time.LoadLocation("Europe/London")
+
 		expectedDate, err := time.Parse(format, expectedStr)
 		if err != nil {
 			return err
 		}
+		expectedDate = expectedDate.In(loc)
 
 		foundDate, err := time.Parse(format, json.(string))
 		if err != nil {
 			return err
 		}
+		foundDate = foundDate.In(loc)
 
 		expected := expectedDate.Format(format)
 		found := foundDate.Format(format)
