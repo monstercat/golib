@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/monstercat/lm"
 	"github.com/tidwall/gjson"
@@ -99,6 +100,7 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 				return err
 			}
 			// Special for "field(#)" where field itself is a number value
+			// EG "total(#)": ">30"
 		} else if k[len(k)-3:] == "(#)" {
 			key := k[:len(k)-3]
 			actualValue := result.Get(key).Value()
@@ -122,4 +124,27 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 
 	}
 	return nil
+}
+
+func CheckDate(expectedStr string, format string) func(i interface{}) error {
+	return func(json interface{}) error {
+		expectedDate, err := time.Parse(format, expectedStr)
+		if err != nil {
+			return err
+		}
+
+		foundDate, err := time.Parse(format, json.(string))
+		if err != nil {
+			return err
+		}
+
+		expected := expectedDate.Format(format)
+		found := foundDate.Format(format)
+
+		if expected == found {
+			return nil
+		}
+
+		return errors.New(fmt.Sprintf("Expected date %s but got %s", expected, found))
+	}
 }
