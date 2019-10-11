@@ -1,6 +1,7 @@
 package expected_m
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -20,6 +21,20 @@ type ExpectedM map[string]interface{}
 func CheckJSONBytes(js []byte, expected *ExpectedM) error {
 	res := gjson.ParseBytes(js)
 	return CheckExpectedM(res, expected)
+}
+
+func CheckJSONString(js string, expected *ExpectedM) error {
+	res := gjson.Parse(js)
+	return CheckExpectedM(res, expected)
+}
+
+func CheckJSON(obj interface{}, expected *ExpectedM) error {
+	bytes, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	return CheckJSONBytes(bytes, expected)
 }
 
 func CheckGJSONLength(k string, expectedValue, actualValue interface{}) error {
