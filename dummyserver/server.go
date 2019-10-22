@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	. "github.com/monstercat/golib/url"
 )
@@ -85,6 +86,10 @@ func (ds *DummyServer) RegisterRoutes() error {
 
 		if r.Path[:1] != "/" {
 			return errors.New(fmt.Sprintf("Route[%d] (%s). Must start with /"))
+		}
+
+		if strings.Contains(r.Path, "?") {
+			return errors.New(fmt.Sprintf("Route[%d] (%s). Path can't have query params", i, r.Path))
 		}
 
 		if _, ok := ds.PathQueryHandlers[r.Path]; !ok {
