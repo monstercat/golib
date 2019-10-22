@@ -44,3 +44,11 @@ func SortedQueryString(vals url.Values) string {
 
 	return qs
 }
+
+func SortQueryString(query string) (string, error) {
+	vals, err := url.ParseQuery(query)
+	if err != nil {
+		return "", err
+	}
+	return SortedQueryString(vals), nil
+}
