@@ -123,7 +123,9 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 				return err
 			}
 		} else if f, ok := expectedValue.(func(val interface{}) error); ok {
-			return f(actualValue)
+			if err := f(actualValue); err != nil {
+				return err
+			}
 		} else {
 			if !reflect.DeepEqual(actualValue, expectedValue) {
 				msg := fmt.Sprintf("Unexpected JSON value at \"%v\". \n Expected: \"%v\" \n    Found: \"%v\"\n", k, expectedValue, actualValue)
@@ -143,6 +145,10 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 
 func CheckDate(expectedStr string, format string) func(i interface{}) error {
 	return func(json interface{}) error {
+		if json == nil {
+			return errors.New(fmt.Sprintf("Expected date %s but it was nil", expectedStr))
+		}
+
 		loc, _ := time.LoadLocation("Europe/London")
 
 		expectedDate, err := time.Parse(format, expectedStr)
