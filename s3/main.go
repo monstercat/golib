@@ -118,7 +118,7 @@ func ExistsS3(info S3Info, key string) (bool, error) {
 	sess := s3.New(info.GetSession())
 	_, err := sess.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(info.DefaultBucket()),
-		Key: aws.String(key),
+		Key:    aws.String(key),
 	})
 	if err == nil {
 		return true, nil
@@ -133,6 +133,15 @@ func ExistsS3(info S3Info, key string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func DeleteS3(info S3Info, key string) error {
+	sess := s3.New(info.GetSession())
+	_, err := sess.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(info.DefaultBucket()),
+		Key:    aws.String(key),
+	})
+	return err
 }
 
 func StreamS3(_s3 S3Info, hash string) (io.ReadCloser, error) {
