@@ -115,6 +115,28 @@ func (s *S3Baked) MkURL(key string) string {
 	return "s3://" + path.Join(s.DefaultBucket(), key)
 }
 
+type SignedUrlConfig struct {
+	Download bool
+	Filename string
+}
+func (c SignedUrlConfig) GetDisposition() string {
+	if !c.Download {
+		return "inline"
+	}
+	if c.Filename == "" {
+		return "attachment"
+	}
+	return fmt.Sprintf("attachment; filename=\"%s\"", c.Filename)
+}
+
+func (c SignedUrlConfig) GetObjectInput(bucket, key string) *s3.GetObjectInput {
+	return &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key: aws.String(key),
+		ResponseContentDisposition: aws.String(c.GetDisposition()),
+	}
+}
+
 func ExistsS3(info S3Info, key string) (bool, error) {
 	sess := s3.New(info.GetSession())
 	_, err := sess.HeadObject(&s3.HeadObjectInput{
@@ -145,12 +167,12 @@ func DeleteS3(info S3Info, key string) error {
 	return err
 }
 
-func SignedUrl(info S3Info, key string, duration time.Duration) (string, error) {
+func SignedUrl(info S3Info, key string, duration time.Duration, cfg *SignedUrlConfig) (string, error) {
 	sess := s3.New(info.GetSession())
-	req, _ := sess.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(info.DefaultBucket()),
-		Key: aws.String(key),
-	})
+	req, _ := sess.GetObjectRequest(cfg.GetObjectInput(
+		info.DefaultBucket(),
+		info.MkHashKey(key),
+	))
 	return req.Presign(duration)
 }
 
