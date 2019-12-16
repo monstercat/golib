@@ -3,6 +3,7 @@ package s3util
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -111,6 +112,27 @@ func (s *S3Baked) MkHashKey(hash string) string {
 // MkURL creates a full s3 url from a file hashKey which is usually a prefix/hash combination
 func (s *S3Baked) MkURL(key string) string {
 	return "s3://" + path.Join(s.DefaultBucket(), key)
+}
+
+func ExistsS3(info S3Info, key string) (bool, error) {
+	sess := s3.New(info.GetSession())
+	_, err := sess.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(info.DefaultBucket()),
+		Key: aws.String(key),
+	})
+	if err == nil {
+		return true, nil
+	}
+
+	aerr, ok := err.(awserr.Error)
+	if !ok {
+		return false, err
+	}
+
+	if aerr.Code() == "NotFound" {
+		return false, nil
+	}
+	return false, err
 }
 
 func StreamS3(_s3 S3Info, hash string) (io.ReadCloser, error) {
