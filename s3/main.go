@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 )
 
 const (
@@ -142,6 +143,15 @@ func DeleteS3(info S3Info, key string) error {
 		Key:    aws.String(key),
 	})
 	return err
+}
+
+func SignedUrl(info S3Info, key string, duration time.Duration) (string, error) {
+	sess := s3.New(info.GetSession())
+	req, _ := sess.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(info.DefaultBucket()),
+		Key: aws.String(key),
+	})
+	return req.Presign(duration)
 }
 
 func StreamS3(_s3 S3Info, hash string) (io.ReadCloser, error) {
