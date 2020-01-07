@@ -18,9 +18,9 @@ import (
 const SetMapTagName = "setmap"
 
 type SetMapTags struct {
-	ParseEmpty  bool `parser:"parseempty"`
-	OmitInsert bool `parser:"omitinsert"`
-	Ignore     bool `parser:"-,ignore"`
+	ParseEmpty bool
+	OmitInsert bool
+	Ignore     bool
 }
 
 func ParseSetMapTags(str string) *SetMapTags {
@@ -52,7 +52,7 @@ func IteratePgFields(val interface{}, isInsert bool, it SetMapIterator) {
 
 func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 	return func(f reflect.StructField, v reflect.Value) {
-		tag := ParseSetMapTags( f.Tag.Get(SetMapTagName) )
+		tag := ParseSetMapTags(f.Tag.Get(SetMapTagName))
 		if tag.Ignore {
 			return
 		}
@@ -82,7 +82,7 @@ func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 		if name == "" {
 			return
 		}
-		it( name, data )
+		it(name, data)
 	}
 }
 
