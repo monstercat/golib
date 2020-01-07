@@ -25,7 +25,7 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 		checked = true
 	case time.Time:
 		isZero = dt.IsZero()
-		data = dt.Format(time.RFC3339)
+		data = dt
 		checked = true
 	}
 	return
