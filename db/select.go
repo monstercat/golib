@@ -126,6 +126,9 @@ func getColumnsForSet(set string, val interface{}, prefix string, invert bool, f
 		t := &SelectTags{}
 		t.Parse(f.Tag.Get(SelectTagName))
 		t.ParseSets(f.Tag.Get(SelectSetTagName))
+		if t.Ignore {
+			return
+		}
 
 		if !shouldReturnField(filterFields, f.Name, invert) {
 			return
@@ -164,6 +167,9 @@ func getColumnsByTag(val interface{}, prefix string, invert bool, filterFields .
 }
 
 func shouldReturnField(filterFields []string, field string, invert bool) bool {
+	if filterFields == nil || len(filterFields) == 0 {
+		return true
+	}
 	// If invert = true, it means exclude those in the list. Therefore,
 	// it should return true if StringInList is false.
 	// Otherwise, it means include.
