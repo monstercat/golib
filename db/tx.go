@@ -24,3 +24,13 @@ func TxNowMulti(db *sqlx.DB, fn []func(tx *sqlx.Tx) error) error {
 		return nil
 	})
 }
+
+func QuickExecTx(tx sqlx.Execer, queries []string, arg ...interface{}) error {
+	for _, q := range queries {
+		_, err := tx.Exec(q, arg...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
