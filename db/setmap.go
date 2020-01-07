@@ -93,3 +93,4 @@ func SetMap(val interface{}, isInsert bool) map[string]interface{} {
 	})
 	return m
 }
+

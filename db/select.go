@@ -138,6 +138,9 @@ func getColumnsForSet(set string, val interface{}, prefix string, invert bool, f
 		}
 
 		name := ColumnNameFromDbTag(f)
+		if name == "" {
+			return
+		}
 		m = append(m, t.Apply(name, prefix, f.Type))
 	})
 	return m
@@ -155,11 +158,17 @@ func getColumnsByTag(val interface{}, prefix string, invert bool, filterFields .
 	IterateStructFields(val, func(f reflect.StructField, v reflect.Value) {
 		t := &SelectTags{}
 		t.Parse(f.Tag.Get(SelectTagName))
+		if t.Ignore {
+			return
+		}
 
 		if !shouldReturnField(filterFields, f.Name, invert) {
 			return
 		}
 		name := ColumnNameFromDbTag(f)
+		if name == "" {
+			return
+		}
 		m[f.Name] = t.Apply(name, prefix, f.Type)
 	})
 
