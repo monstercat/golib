@@ -60,7 +60,7 @@ func run(reqG Requester, ev chan Event, errCh chan error, p *Params) {
 		res, err := client.Do(req)
 		if err != nil {
 			errCh <- err
-		}else {
+		} else {
 			parse(res, ev, errCh)
 		}
 		time.Sleep(p.RetryTimeout)

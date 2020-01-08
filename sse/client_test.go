@@ -16,17 +16,17 @@ func TestClient(t *testing.T) {
 	events := []sse.Event{
 		{
 			Event: "Heartbeat",
-			Data: "0\n1\n2",
+			Data:  "0\n1\n2",
 		},
 		{
 			Event: "Heartbeat",
-			Data: "4\n5\n6",
+			Data:  "4\n5\n6",
 		},
 	}
 
 	// Start gin server.
 	g := gin.Default()
-	g.GET("/notifications", func(c *gin.Context){
+	g.GET("/notifications", func(c *gin.Context) {
 		c.Stream(func(w io.Writer) bool {
 			for _, e := range events {
 				c.Render(-1, e)
@@ -43,10 +43,10 @@ func TestClient(t *testing.T) {
 	errCh := make(chan error)
 	evCh := make(chan Event)
 
-	req := func() * http.Request {
+	req := func() (*http.Request, error) {
 		req, _ := http.NewRequest("GET", "http://localhost:15933/notifications", nil)
 		req.Header.Set("Accept", "text/event-stream")
-		return req
+		return req, nil
 	}
 
 	Run(req, evCh, errCh, nil)
@@ -54,9 +54,9 @@ func TestClient(t *testing.T) {
 	i := 0
 	for {
 		select {
-		case err := <- errCh:
+		case err := <-errCh:
 			panic(err)
-		case ev := <- evCh:
+		case ev := <-evCh:
 			curr := events[i]
 			if curr.Event != ev.Event {
 				t.Errorf("Event %d: should be %s, but got %s", i, curr.Event, ev.Event)
@@ -65,7 +65,7 @@ func TestClient(t *testing.T) {
 				t.Errorf("Data %d: should be %s, but got %s", i, curr.Data, ev.Data)
 			}
 			i++
-		case <- time.After(6 * time.Second):
+		case <-time.After(6 * time.Second):
 			panic("Timeout")
 		}
 
