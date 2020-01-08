@@ -31,7 +31,7 @@ var DefaultParams = Params{
 	RetryTimeout: 5 * time.Second,
 }
 
-type Requester func() *http.Request
+type Requester func() (*http.Request, error)
 
 func Run(reqG Requester, ev chan Event, err chan error, p *Params) {
 	if p == nil {
@@ -51,7 +51,13 @@ func run(reqG Requester, ev chan Event, errCh chan error, p *Params) {
 	client := &http.Client{}
 
 	for {
-		res, err := client.Do(reqG())
+		req, err := reqG()
+		if err != nil {
+			errCh <- err
+			time.Sleep(p.RetryTimeout)
+			continue
+		}
+		res, err := client.Do(req)
 		if err != nil {
 			errCh <- err
 		}else {
