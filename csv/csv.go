@@ -70,10 +70,12 @@ func IterateCsvMap(r *csv.Reader, expectedHeaders []string, lambda MapIterator) 
 
 func IterateCsvMapGroupErrors(r *csv.Reader, expectedHeaders []string, lambda MapIteratorGroupErrors) error {
 	errs := &MultipleError{}
-	IterateCsvMap(r, expectedHeaders, func(row map[string]string, line int) error {
+	if err := IterateCsvMap(r, expectedHeaders, func(row map[string]string, line int) error {
 		lambda(row, line, errs)
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 	return errs.Return()
 }
 
