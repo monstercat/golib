@@ -6,8 +6,6 @@ import (
 
 	"github.com/monstercat/pgnull"
 	"github.com/shopspring/decimal"
-
-	"github.com/monstercat/golib/time"
 )
 
 var defaultFormats = []string{
@@ -95,10 +93,6 @@ func ParseCsvStringToTime(fmts []string, str string) (time.Time, error) {
 	}
 	if err != nil {
 		return time.Time{}, &BadDateFormatError{Date: str}
-	}
-
-	if !timeUtils.IsReasonableTime(xv) {
-		return time.Time{}, &UnreasonableTimeCsvError{Date: str}
 	}
 	return xv, nil
 }
