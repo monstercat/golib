@@ -124,7 +124,7 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 			}
 		} else if f, ok := expectedValue.(func(val interface{}) error); ok {
 			if err := f(actualValue); err != nil {
-				return err
+				return errors.New(fmt.Sprintf("Error at \"%v\" %v", k, err))
 			}
 		} else {
 			if !reflect.DeepEqual(actualValue, expectedValue) {
