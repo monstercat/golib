@@ -10,6 +10,12 @@ import (
 	"github.com/monstercat/golib/time"
 )
 
+var defaultFormats = []string{
+	time.RFC3339,
+	TimeFormat,
+	DateFormat,
+}
+
 const (
 	TimeFormat = "2006-01-02 15:04:05 -0700"
 	DateFormat = "2006-01-02"
@@ -46,7 +52,7 @@ func GetFieldFromRow(row map[string]string, field string, line int, required boo
 	return v, nil
 }
 
-func GetTimeFromRow(row map[string]string, field string, line int, required bool) (time.Time, error) {
+func GetCustomTimeFromRow(fmts []string, row map[string]string, field string, line int, required bool) (time.Time, error) {
 	v, err := GetFieldFromRow(row, field, line, required)
 	if err != nil {
 		return time.Time{}, err
@@ -54,44 +60,54 @@ func GetTimeFromRow(row map[string]string, field string, line int, required bool
 	if v == "" {
 		return time.Time{}, nil
 	}
-	xv, err := ParseCsvStringToTime(v)
+	xv, err := ParseCsvStringToTime(fmts, v)
 	if err != nil {
 		return time.Time{}, TransformCsvError(err, field, line)
 	}
 	return xv, nil
 }
 
-func GetNullTimeFromRow(row map[string]string, field string, line int) (pgnull.NullTime, error) {
+func GetTimeFromRow(row map[string]string, field string, line int, required bool) (time.Time, error) {
+	return GetCustomTimeFromRow(defaultFormats, row, field, line, required)
+}
+
+func GetCustomNullTimeFromRow(fmts []string, row map[string]string, field string, line int) (pgnull.NullTime, error) {
 	v, err := GetFieldFromRow(row, field, line, false)
-	xv, err := ParseCsvStringToNullTime(v)
+	xv, err := ParseCsvStringToNullTime(defaultFormats, v)
 	if err != nil {
 		return pgnull.NullTime{}, TransformCsvError(err, field, line)
 	}
 	return xv, nil
 }
 
-func ParseCsvStringToTime(str string) (time.Time, error) {
-	xv, err := time.Parse(TimeFormat, str)
-	if err != nil {
-		// Check if they only provided date...
-		// TODO refactor this to flex check method or something
-		if yv, err2 := time.Parse(DateFormat, str); err2 == nil {
-			xv = yv
-		} else {
-			return time.Time{}, &BadDateFormatError{Date: str}
+func GetNullTimeFromRow(row map[string]string, field string, line int) (pgnull.NullTime, error) {
+	return GetCustomNullTimeFromRow(defaultFormats, row, field, line)
+}
+
+func ParseCsvStringToTime(fmts []string, str string) (time.Time, error) {
+	var xv time.Time
+	var err error
+	for _, fmt := range fmts {
+		xv, err = time.Parse(fmt, str)
+		if err == nil {
+			break
 		}
 	}
+	if err != nil {
+		return time.Time{}, &BadDateFormatError{Date: str}
+	}
+
 	if !timeUtils.IsReasonableTime(xv) {
 		return time.Time{}, &UnreasonableTimeCsvError{Date: str}
 	}
 	return xv, nil
 }
 
-func ParseCsvStringToNullTime(str string) (pgnull.NullTime, error) {
+func ParseCsvStringToNullTime(fmts []string, str string) (pgnull.NullTime, error) {
 	if str == "" {
 		return pgnull.NullTime{}, nil
 	}
-	date, err := ParseCsvStringToTime(str)
+	date, err := ParseCsvStringToTime(fmts, str)
 	if err != nil {
 		return pgnull.NullTime{}, err
 	}
