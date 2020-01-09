@@ -94,7 +94,6 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 			if currEvent.Event != "" && len(bs) > 0 {
 				currEvent.addToMessage(string(bs))
 			}
-
 			continue
 		}
 
@@ -110,5 +109,4 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 			currEvent.addToMessage(string(spl[1]))
 		}
 	}
-
 }
