@@ -96,14 +96,13 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 		if len(bs) < 2 {
 			continue
 		}
-		spl := bytes.Split(bs, []byte{':'})
+		spl := bytes.SplitN(bs, []byte{':'}, 2)
 		if len(spl) < 2 {
 			if currEvent.Event != "" && len(bs) > 0 {
 				currEvent.addToMessage(string(bs))
 			}
 			continue
 		}
-		d := bytes.Join(spl[1:], []byte{':'})
 
 		switch cleanBytes(spl[0]) {
 		case eName:
@@ -112,10 +111,10 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 				send(evCh, *currEvent)
 			}
 			currEvent = &Event{
-				Event: cleanBytes(d),
+				Event: cleanBytes(spl[1]),
 			}
 		case dName:
-			currEvent.addToMessage(string(d))
+			currEvent.addToMessage(string(spl[1]))
 		}
 	}
 }
