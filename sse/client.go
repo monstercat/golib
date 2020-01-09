@@ -3,7 +3,6 @@ package sse
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -52,6 +51,7 @@ func run(reqG Requester, ev chan Event, errCh chan error, p *Params) {
 
 	for {
 		req, err := reqG()
+		req.Header.Set("Accept", "text/event-stream")
 		if err != nil {
 			errCh <- err
 			time.Sleep(p.RetryTimeout)
@@ -77,14 +77,21 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 
 	currEvent := &Event{}
 
+	now := time.Now()
+
 	for {
+		if now.Add( 250 * time.Millisecond ).Before(time.Now()) {
+			now = time.Now()
+			if currEvent.Event != "" {
+				send(evCh, *currEvent)
+				currEvent = &Event{}
+			}
+		}
+
 		bs, err := br.ReadBytes('\n')
-		if err != nil && err != io.EOF {
+		if err != nil {
 			errCh <- err
 			return
-		}
-		if err == io.EOF {
-			time.Sleep(100 * time.Millisecond)
 		}
 		if len(bs) < 2 {
 			continue
@@ -96,17 +103,27 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 			}
 			continue
 		}
+		d := bytes.Join(spl[1:], []byte{':'})
 
 		switch cleanBytes(spl[0]) {
 		case eName:
 			if currEvent.Event != "" {
-				currEvent.Data = strings.TrimSpace(currEvent.Data)
-				evCh <- *currEvent
-				currEvent = &Event{}
+				now = time.Now()
+				send(evCh, *currEvent)
 			}
-			currEvent.Event = cleanBytes(spl[1])
+			currEvent = &Event{
+				Event: cleanBytes(d),
+			}
 		case dName:
-			currEvent.addToMessage(string(spl[1]))
+			currEvent.addToMessage(string(d))
 		}
 	}
+}
+
+func send(evCh chan Event, ev Event) {
+	if ev.Event == "" {
+		return
+	}
+	ev.Data = strings.TrimSpace(ev.Data)
+	evCh <- ev
 }
