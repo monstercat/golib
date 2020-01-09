@@ -2,19 +2,21 @@ package s3util
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -119,6 +121,7 @@ type SignedUrlConfig struct {
 	Download bool
 	Filename string
 }
+
 func (c SignedUrlConfig) GetDisposition() string {
 	if !c.Download {
 		return "inline"
@@ -131,31 +134,37 @@ func (c SignedUrlConfig) GetDisposition() string {
 
 func (c SignedUrlConfig) GetObjectInput(bucket, key string) *s3.GetObjectInput {
 	return &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key: aws.String(key),
+		Bucket:                     aws.String(bucket),
+		Key:                        aws.String(key),
 		ResponseContentDisposition: aws.String(c.GetDisposition()),
 	}
 }
 
 func ExistsS3(info S3Info, key string) (bool, error) {
+	_, exists, err := ObjectExistsS3(info, key)
+	return exists, err
+}
+
+func ObjectExistsS3(info S3Info, key string) (*s3.HeadObjectOutput, bool, error) {
 	sess := s3.New(info.GetSession())
-	_, err := sess.HeadObject(&s3.HeadObjectInput{
+	obj, err := sess.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(info.DefaultBucket()),
 		Key:    aws.String(key),
 	})
+
 	if err == nil {
-		return true, nil
+		return obj, true, nil
 	}
 
 	aerr, ok := err.(awserr.Error)
 	if !ok {
-		return false, err
+		return nil, false, err
 	}
 
 	if aerr.Code() == "NotFound" {
-		return false, nil
+		return nil, false, nil
 	}
-	return false, err
+	return nil, false, err
 }
 
 func DeleteS3(info S3Info, key string) error {
