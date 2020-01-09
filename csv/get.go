@@ -73,7 +73,7 @@ func GetTimeFromRow(row map[string]string, field string, line int, required bool
 
 func GetCustomNullTimeFromRow(fmts []string, row map[string]string, field string, line int) (pgnull.NullTime, error) {
 	v, err := GetFieldFromRow(row, field, line, false)
-	xv, err := ParseCsvStringToNullTime(defaultFormats, v)
+	xv, err := ParseCsvStringToNullTime(fmts, v)
 	if err != nil {
 		return pgnull.NullTime{}, TransformCsvError(err, field, line)
 	}
