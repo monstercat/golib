@@ -32,22 +32,32 @@ var DefaultParams = Params{
 
 type Requester func() (*http.Request, error)
 
-func Run(reqG Requester, ev chan Event, err chan error, p *Params) {
+type Client struct {
+	Requester    Requester
+	EventChannel chan Event
+	ErrorChannel chan error
+}
+
+func (c *Client) Run(p *Params) {
 	if p == nil {
 		p = &DefaultParams
 	}
-	go run(reqG, ev, err, p)
+	go c.run(p)
 }
 
-func RunSync(reqG Requester, ev chan Event, err chan error, p *Params) {
+func (c *Client) RunSync(p *Params) {
 	if p == nil {
 		p = &DefaultParams
 	}
-	run(reqG, ev, err, p)
+	go c.run(p)
 }
 
-func run(reqG Requester, ev chan Event, errCh chan error, p *Params) {
+func (c *Client) run(p *Params) {
 	client := &http.Client{}
+
+	reqG := c.Requester
+	ev := c.EventChannel
+	errCh := c.ErrorChannel
 
 	for {
 		req, err := reqG()
@@ -77,44 +87,52 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 
 	currEvent := &Event{}
 
-	now := time.Now()
+	// We want to send out the events if there is 250 milliseconds
+	// without any other data coming through. However, the ReadBytes
+	// function blocks. Therefore, we need to use goroutines
+	// and channels.
+	byteCh := make(chan []byte)
+
+	go func() {
+		for {
+			bs, err := br.ReadBytes('\n')
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if len(bs) < 2 {
+				continue
+			}
+			byteCh <- bs
+		}
+	}()
 
 	for {
-		if now.Add( 250 * time.Millisecond ).Before(time.Now()) {
-			now = time.Now()
+		select {
+		case <-time.After(250 * time.Millisecond):
 			if currEvent.Event != "" {
 				send(evCh, *currEvent)
 				currEvent = &Event{}
 			}
-		}
-
-		bs, err := br.ReadBytes('\n')
-		if err != nil {
-			errCh <- err
-			return
-		}
-		if len(bs) < 2 {
-			continue
-		}
-		spl := bytes.SplitN(bs, []byte{':'}, 2)
-		if len(spl) < 2 {
-			if currEvent.Event != "" && len(bs) > 0 {
-				currEvent.addToMessage(string(bs))
+		case bs := <-byteCh:
+			spl := bytes.SplitN(bs, []byte{':'}, 2)
+			if len(spl) < 2 {
+				if currEvent.Event != "" {
+					currEvent.addToMessage(string(bs))
+				}
+				continue
 			}
-			continue
-		}
-
-		switch cleanBytes(spl[0]) {
-		case eName:
-			if currEvent.Event != "" {
-				now = time.Now()
-				send(evCh, *currEvent)
+			switch cleanBytes(spl[0]) {
+			case eName:
+				if currEvent.Event != "" {
+					send(evCh, *currEvent)
+				}
+				currEvent = &Event{
+					Event: cleanBytes(spl[1]),
+				}
+			case dName:
+				currEvent.addToMessage(string(spl[1]))
 			}
-			currEvent = &Event{
-				Event: cleanBytes(spl[1]),
-			}
-		case dName:
-			currEvent.addToMessage(string(spl[1]))
 		}
 	}
 }
