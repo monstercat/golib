@@ -49,7 +49,12 @@ func TestClient(t *testing.T) {
 		return req, nil
 	}
 
-	Run(req, evCh, errCh, nil)
+	client := &Client{
+		Requester: req,
+		EventChannel: evCh,
+		ErrorChannel: errCh,
+	}
+	client.Run(nil)
 
 	i := 0
 	for {
