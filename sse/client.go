@@ -49,7 +49,7 @@ func (c *Client) RunSync(p *Params) {
 	if p == nil {
 		p = &DefaultParams
 	}
-	go c.run(p)
+	c.run(p)
 }
 
 func (c *Client) run(p *Params) {
