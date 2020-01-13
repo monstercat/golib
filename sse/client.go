@@ -3,6 +3,7 @@ package sse
 import (
 	"bufio"
 	"bytes"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -73,6 +74,7 @@ func (c *Client) run(p *Params) {
 		} else {
 			parse(res, ev, errCh)
 		}
+		log.Print("Reconnecting...")
 		time.Sleep(p.RetryTimeout)
 	}
 }
@@ -92,12 +94,18 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 	// function blocks. Therefore, we need to use goroutines
 	// and channels.
 	byteCh := make(chan []byte)
+	cancel := make(chan bool)
 
 	go func() {
 		for {
 			bs, err := br.ReadBytes('\n')
 			if err != nil {
 				errCh <- err
+
+				// This tells the parse function to exit.
+				// Which is what we want. Read bytes returned an error
+				// therefore, we need to reconnect.
+				cancel <- true
 				return
 			}
 			if len(bs) < 2 {
@@ -109,6 +117,11 @@ func parse(res *http.Response, evCh chan Event, errCh chan error) {
 
 	for {
 		select {
+		case <- cancel:
+			// In case there are any errors from the readBytes go routine,
+			// this will cause the whole function to exist. Therefore,
+			// allowing the client to retry.
+			return
 		case <-time.After(250 * time.Millisecond):
 			if currEvent.Event != "" {
 				send(evCh, *currEvent)
