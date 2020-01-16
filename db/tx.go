@@ -2,7 +2,9 @@ package dbUtil
 
 import "github.com/jmoiron/sqlx"
 
-func TxNow(db *sqlx.DB, fn func(tx *sqlx.Tx) error) error {
+type TxFunc func(tx *sqlx.Tx) error
+
+func TxNow(db *sqlx.DB, fn TxFunc) error {
 	tx, err := db.Beginx()
 	if err != nil {
 		return err
@@ -14,14 +16,9 @@ func TxNow(db *sqlx.DB, fn func(tx *sqlx.Tx) error) error {
 	return tx.Commit()
 }
 
-func TxNowMulti(db *sqlx.DB, fn []func(tx *sqlx.Tx) error) error {
+func TxNowMulti(db *sqlx.DB, fn []TxFunc) error {
 	return TxNow(db, func(tx *sqlx.Tx) error {
-		for _, f := range fn {
-			if err := f(tx); err != nil {
-				return err
-			}
-		}
-		return nil
+		return RunMulti(tx, fn)
 	})
 }
 
@@ -29,6 +26,15 @@ func QuickExecTx(tx sqlx.Execer, queries []string, arg ...interface{}) error {
 	for _, q := range queries {
 		_, err := tx.Exec(q, arg...)
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func RunMulti(tx *sqlx.Tx, fns []TxFunc) error {
+	for _, f := range fns {
+		if err := f(tx); err != nil {
 			return err
 		}
 	}
