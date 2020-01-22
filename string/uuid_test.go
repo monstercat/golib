@@ -9,6 +9,7 @@ func TestIsUuid(t *testing.T) {
 		Test string
 	} {
 		{true, "123e4567-e89b-12d3-a456-426655440000"},
+		{false, "id:123e4567-e89b-12d3-a456-426655440000"},
 		{false, "123e4567-e89g-12d3-a456-426655440000"},
 		{true, "123ABCDE-E12F-a000-0033-159392aef039"},
 		{false, "hi"},
