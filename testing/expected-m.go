@@ -116,7 +116,7 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 			}
 			// Special for "field(#)" where field itself is a number value
 			// EG "total(#)": ">30"
-		} else if k[len(k)-3:] == "(#)" {
+		} else if len(k) > 3 && k[len(k)-3:] == "(#)" {
 			key := k[:len(k)-3]
 			actualValue := result.Get(key).Value()
 			if err := CheckGJSONLength(key, expectedValue, actualValue); err != nil {
