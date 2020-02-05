@@ -1,8 +1,6 @@
 package dbUtil
 
 import (
-	"database/sql"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
@@ -12,7 +10,7 @@ func Get(db sqlx.Queryer, dest interface{}, qry squirrel.SelectBuilder) error {
 	if err != nil {
 		return err
 	}
-	return IgnoreNoRows(sqlx.Get(db, dest, sql, args...))
+	return sqlx.Get(db, dest, sql, args...)
 }
 
 func Select(db sqlx.Queryer, dest interface{}, qry squirrel.SelectBuilder) error {
@@ -20,13 +18,5 @@ func Select(db sqlx.Queryer, dest interface{}, qry squirrel.SelectBuilder) error
 	if err != nil {
 		return err
 	}
-	return IgnoreNoRows(sqlx.Select(db, dest, sql, args...))
+	return sqlx.Select(db, dest, sql, args...)
 }
-
-func IgnoreNoRows(err error) error {
-	if err == sql.ErrNoRows {
-		return nil
-	}
-	return err
-}
-
