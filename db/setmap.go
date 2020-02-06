@@ -71,6 +71,7 @@ func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 				// If data is an array, we need to wrap it as a
 				// postgresable array.
 				data = pq.Array(data)
+				isZero = false
 			}
 		}
 
