@@ -18,7 +18,7 @@ import (
 const SetMapTagName = "setmap"
 
 type SetMapTags struct {
-	ParseEmpty bool
+	OmitEmpty bool
 	OmitInsert bool
 	Ignore     bool
 }
@@ -36,8 +36,8 @@ func (t *SetMapTags) Parse(str string) {
 		switch strings.TrimSpace(v) {
 		case "-", "ignore":
 			t.Ignore = true
-		case "parseempty":
-			t.ParseEmpty = true
+		case "omitempty":
+			t.OmitEmpty = true
 		case "omitinsert":
 			t.OmitInsert = true
 		}
@@ -71,10 +71,11 @@ func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 				// If data is an array, we need to wrap it as a
 				// postgresable array.
 				data = pq.Array(data)
+				isZero = false
 			}
 		}
 
-		if isZero && !tag.ParseEmpty {
+		if isZero && tag.OmitEmpty {
 			return
 		}
 
