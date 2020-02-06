@@ -6,7 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func DebugQuery(query *squirrel.SelectBuilder) {
+func DebugQuery(query squirrel.Sqlizer) {
 	DebugQueryPieces(query.ToSql())
 }
 
