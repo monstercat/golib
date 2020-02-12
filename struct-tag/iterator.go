@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"reflect"
 	"time"
+
+	"github.com/monstercat/pgnull"
 )
 
 type StructFieldIterator func(reflect.StructField, reflect.Value)
@@ -21,6 +23,9 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 
 	switch dt := data.(type) {
 	case sql.NullString:
+		isZero = !dt.Valid || dt.String == ""
+		checked = true
+	case pgnull.NullString:
 		isZero = !dt.Valid || dt.String == ""
 		checked = true
 	case time.Time:
