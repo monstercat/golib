@@ -1,11 +1,13 @@
 package dbUtil
 
 import (
+	"database/sql"
 	"log"
 	"testing"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/monstercat/pgnull"
 )
 
 func TestSetMap(t *testing.T) {
@@ -13,15 +15,19 @@ func TestSetMap(t *testing.T) {
 	var x = struct {
 		Id            string `db:"id" setmap:"omitinsert"`
 		Name          string
-		CreatedAt     time.Time      `db:"created_at"`
-		SomethingElse string         `db:"-"`
-		StringArr     pq.StringArray `db:"string_arr"`
+		CreatedAt     time.Time         `db:"created_at"`
+		SomethingElse string            `db:"-"`
+		StringArr     pq.StringArray    `db:"string_arr"`
+		NullString    sql.NullString    `db:"null_string"`
+		NullString2   pgnull.NullString `db:"null_string2"`
 	}{
 		Id:            "1234566787",
 		Name:          "Test Name",
 		CreatedAt:     time.Now(),
 		SomethingElse: "1234456",
 		StringArr:     []string{"123", "456"},
+		NullString:    sql.NullString{Valid: true, String: "test"},
+		NullString2:   pgnull.NewNullString("test"),
 	}
 
 	updateM := SetMap(&x, false)
@@ -83,6 +89,16 @@ func TestSetMap(t *testing.T) {
 			Key:    "string_arr",
 			Exists: true,
 		},
+		{
+			Result: insertM,
+			Key:    "null_string",
+			Exists: true,
+		},
+		{
+			Result: insertM,
+			Key:    "null_string2",
+			Exists: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -91,8 +107,10 @@ func TestSetMap(t *testing.T) {
 			t.Errorf("Expected %s to %sexist but it does %sexist", tt.Key, boolToModifier(tt.Exists), boolToModifier(ok))
 		}
 		log.Print(tt.Key, v)
-		if v != tt.Value {
-			t.Errorf("Value %v expected. Got %v", tt.Value, v)
+		if tt.Value != nil {
+			if v != tt.Value {
+				t.Errorf("Value %v expected. Got %v", tt.Value, v)
+			}
 		}
 	}
 }
