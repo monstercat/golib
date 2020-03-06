@@ -5,14 +5,16 @@ type Operators struct {
 	Values     map[string][]Operator
 
 	// Remainders
-	Remainders []string
+	Remainders []Operator
 }
 
 func (o *Operators) AddRemainder(str string) {
 	if len(str) == 0 {
 		return
 	}
-	o.Remainders = append(o.Remainders, str)
+	o.Remainders = append(o.Remainders, Operator{
+		Value: str,
+	})
 }
 
 func (o *Operators) AddOperator(key string, op Operator) {
@@ -25,6 +27,15 @@ func (o *Operators) AddOperator(key string, op Operator) {
 		return
 	}
 	o.Values[key] = append(m, op)
+}
+
+func (o *Operators) GetOperator(key string) []Operator {
+	return o.Values[key]
+}
+
+func (o *Operators) GetOperatorValues(key string) []string {
+	ops := o.GetOperator(key)
+	return GetOperatorValues(ops)
 }
 
 type Operator struct {
@@ -42,4 +53,15 @@ func (o *Operator) Has(m Modifier) bool {
 		}
 	}
 	return false
+}
+
+func GetOperatorValues(ops []Operator) []string {
+	if len(ops) == 0 {
+		return nil
+	}
+	xs := make([]string, 0, len(ops))
+	for _, o := range ops {
+		xs = append(xs, o.Value)
+	}
+	return xs
 }

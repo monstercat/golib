@@ -49,7 +49,7 @@ func (p *Parser) Parse(str string) Operators {
 
 	operators := Operators{
 		Values:     make(map[string][]Operator),
-		Remainders: make([]string, 0, 10),
+		Remainders: make([]Operator, 0, 10),
 	}
 	currModifiers := make([]Modifier, 0, len(p.Modifiers))
 
