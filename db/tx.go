@@ -3,6 +3,7 @@ package dbUtil
 import "github.com/jmoiron/sqlx"
 
 type TxFunc func(tx *sqlx.Tx) error
+type ExtFunc func(tx sqlx.Ext) error
 
 func TxNow(db *sqlx.DB, fn TxFunc) error {
 	tx, err := db.Beginx()
@@ -35,6 +36,15 @@ func QuickExecTx(tx sqlx.Execer, queries []string, arg ...interface{}) error {
 func RunMulti(tx *sqlx.Tx, fns []TxFunc) error {
 	for _, f := range fns {
 		if err := f(tx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func RunMultiExt(ext sqlx.Ext, fns []ExtFunc) error {
+	for _, f := range fns {
+		if err := f(ext); err != nil {
 			return err
 		}
 	}
