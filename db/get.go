@@ -5,18 +5,18 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Get(db sqlx.Queryer, dest interface{}, qry squirrel.SelectBuilder) error {
+func Get(db sqlx.Queryer, val interface{}, qry squirrel.SelectBuilder) error {
 	sql, args, err := qry.ToSql()
 	if err != nil {
 		return err
 	}
-	return sqlx.Get(db, dest, sql, args...)
+	return sqlx.Get(db, val, sql, args...)
 }
 
-func Select(db sqlx.Queryer, dest interface{}, qry squirrel.SelectBuilder) error {
+func Select(db sqlx.Queryer, slice interface{}, qry squirrel.SelectBuilder) error {
 	sql, args, err := qry.ToSql()
 	if err != nil {
 		return err
 	}
-	return sqlx.Select(db, dest, sql, args...)
+	return sqlx.Select(db, slice, sql, args...)
 }

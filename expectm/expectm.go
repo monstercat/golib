@@ -1,4 +1,4 @@
-package expected_m
+package expectm
 
 import (
 	"encoding/json"
@@ -10,6 +10,8 @@ import (
 
 	"github.com/monstercat/lm"
 	"github.com/tidwall/gjson"
+
+	mtime "github.com/monstercat/golib/time"
 )
 
 // This custom type is so you can't accidentally pass in the wrong
@@ -17,6 +19,7 @@ import (
 // EG: checkJSON(sentJSON, sentJSON) won't compile if the function
 // expects ExpectedM as the 2nd parameter
 type ExpectedM map[string]interface{}
+type MChecker func(val interface{}) error
 
 func CheckJSONBytes(js []byte, expected *ExpectedM) error {
 	res := gjson.ParseBytes(js)
@@ -65,7 +68,7 @@ func CheckGJSONLength(k string, expectedValue, actualValue interface{}) error {
 			hasError = comparator == '<'
 		}
 		if hasError {
-			return errors.New(fmt.Sprintf("For test `%s`, expect length: %s%d; got 0", string(comparator), k, test))
+			return errors.New(fmt.Sprintf("for test `%s`, expect length: %s%d; got 0", string(comparator), k, test))
 		}
 		return nil
 	}
@@ -94,7 +97,7 @@ func CheckGJSONLength(k string, expectedValue, actualValue interface{}) error {
 
 	if hasError {
 		return errors.New(fmt.Sprintf(
-			"For test `%s`, expect length: %s%d; got %d\n",
+			"for test `%s`, expect length: %s%d; got %d\n",
 			k,
 			string(comparator),
 			test,
@@ -122,13 +125,13 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 			if err := CheckGJSONLength(key, expectedValue, actualValue); err != nil {
 				return err
 			}
-		} else if f, ok := expectedValue.(func(val interface{}) error); ok {
+		} else if f, ok := expectedValue.(func(json interface{}) error); ok {
 			if err := f(actualValue); err != nil {
 				return errors.New(fmt.Sprintf("Error at \"%v\" %v", k, err))
 			}
 		} else {
 			if !reflect.DeepEqual(actualValue, expectedValue) {
-				msg := fmt.Sprintf("Unexpected JSON value at \"%v\". \n Expected: \"%v\" \n    Found: \"%v\"\n", k, expectedValue, actualValue)
+				msg := fmt.Sprintf("unexpected JSON value at \"%v\". \n Expected: \"%v\" \n    Found: \"%v\"\n JSON: %v", k, expectedValue, actualValue, result)
 
 				// We don't really care about Go types for checking JSON
 				// This lets us do {"numberField": 0} without having to do float64(0)
@@ -143,10 +146,10 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 	return nil
 }
 
-func CheckDate(expectedStr string, format string) func(i interface{}) error {
+func CheckDate(expectedStr string, format string) MChecker {
 	return func(json interface{}) error {
 		if json == nil {
-			return errors.New(fmt.Sprintf("Expected date %s but it was nil", expectedStr))
+			return errors.New(fmt.Sprintf("expected date %s but it was nil", expectedStr))
 		}
 
 		loc, _ := time.LoadLocation("Europe/London")
@@ -170,6 +173,33 @@ func CheckDate(expectedStr string, format string) func(i interface{}) error {
 			return nil
 		}
 
-		return errors.New(fmt.Sprintf("Expected date %s but got %s", expected, found))
+		return errors.New(fmt.Sprintf("expected date %s but got %s", expected, found))
+	}
+}
+
+// Returns a handler function that can be used in an ExpectedM object to compare a date
+// value, represented as a string such as in JSON, against an actual date passed in
+
+// The leeway duration allows for the dates to be off by that much time
+// This is useful when you are comparing one time to one that will happen after some code runs
+// For example comparing a PostedDate of a blog post that you are creating versus the one
+// actually stored in the database. Without the leeway then if they were off by milliseconds
+// they would not be equal.
+
+// Example:
+// test := {
+//   bodyShouldHave: ExpectedM{
+//      "created": CheckDateClose(time.Now(), time.Second),
+//   }
+func CheckDateClose(target time.Time, leeway time.Duration) MChecker {
+	return func(val interface{}) error {
+		if val == nil {
+			return errors.New(fmt.Sprintf("expected date %s +/- %s", target, leeway))
+		}
+
+		valS := val.(string)
+		format := "2006-01-02T15:04:05-07:00"
+		_, err := mtime.ParseTimeCheckNear(valS, format, target, leeway)
+		return err
 	}
 }
