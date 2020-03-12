@@ -19,7 +19,6 @@ import (
 // EG: checkJSON(sentJSON, sentJSON) won't compile if the function
 // expects ExpectedM as the 2nd parameter
 type ExpectedM map[string]interface{}
-type MChecker func(val interface{}) error
 
 func CheckJSONBytes(js []byte, expected *ExpectedM) error {
 	res := gjson.ParseBytes(js)
@@ -146,7 +145,7 @@ func CheckExpectedM(result gjson.Result, expected *ExpectedM) error {
 	return nil
 }
 
-func CheckDate(expectedStr string, format string) MChecker {
+func CheckDate(expectedStr string, format string) func(json interface{}) error {
 	return func(json interface{}) error {
 		if json == nil {
 			return errors.New(fmt.Sprintf("expected date %s but it was nil", expectedStr))
@@ -191,7 +190,7 @@ func CheckDate(expectedStr string, format string) MChecker {
 //   bodyShouldHave: ExpectedM{
 //      "created": CheckDateClose(time.Now(), time.Second),
 //   }
-func CheckDateClose(target time.Time, leeway time.Duration) MChecker {
+func CheckDateClose(target time.Time, leeway time.Duration) func(json interface{}) error {
 	return func(val interface{}) error {
 		if val == nil {
 			return errors.New(fmt.Sprintf("expected date %s +/- %s", target, leeway))
