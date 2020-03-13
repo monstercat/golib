@@ -197,8 +197,7 @@ func CheckDateClose(target time.Time, leeway time.Duration) func(json interface{
 		}
 
 		valS := val.(string)
-		format := "2006-01-02T15:04:05-07:00"
-		_, err := mtime.ParseTimeCheckNear(valS, format, target, leeway)
+		_, err := mtime.ParseTimeCheckNear(valS, time.RFC3339, target, leeway)
 		return err
 	}
 }
