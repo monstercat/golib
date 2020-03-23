@@ -132,7 +132,9 @@ func (ds *DummyServer) RegisterRoutes() error {
 				if route == nil {
 					w.WriteHeader(500)
 					// Will the loop change the value of path to the last value for ALL handlers?
-					w.Write([]byte(fmt.Sprintf("Could not find a dummy route for path '%s' and query '%s'", path, sortedQuery)))
+					msg := fmt.Sprintf("Could not find a dummy route for path '%s' and query '%s'", path, sortedQuery)
+					ds.Log(msg)
+					w.Write([]byte(msg))
 				} else {
 					for key, value := range route.Headers {
 						w.Header().Add(key, value)
@@ -151,6 +153,15 @@ func (ds *DummyServer) RegisterRoutes() error {
 
 		hserver.HandleFunc(path, handler)
 	}
+
+	hserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			ds.Log("404: ", r.URL.String())
+			w.WriteHeader(http.StatusNotFound)
+
+			return
+		}
+	})
 
 	// Is this go func needed? I think it might be if you want to run two servers at once
 	go func() {
