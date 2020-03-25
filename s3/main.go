@@ -149,7 +149,7 @@ func ObjectExistsS3(info S3Info, key string) (*s3.HeadObjectOutput, bool, error)
 	sess := s3.New(info.GetSession())
 	obj, err := sess.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(info.DefaultBucket()),
-		Key:    aws.String(key),
+		Key:    aws.String(info.MkHashKey(key)),
 	})
 
 	if err == nil {
@@ -171,7 +171,7 @@ func DeleteS3(info S3Info, key string) error {
 	sess := s3.New(info.GetSession())
 	_, err := sess.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(info.DefaultBucket()),
-		Key:    aws.String(key),
+		Key:    aws.String(info.MkHashKey(key)),
 	})
 	return err
 }
