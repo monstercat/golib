@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// DEPRECATED: this file is deprecated. We should migrate to the newer S3 interface.
+
 const (
 	TempDirectoryEnv = "TEMP_DIR" // Would just use default temp directory if not specified
 )
@@ -29,16 +31,16 @@ type S3Info interface {
 	DefaultBucket() string
 	// Allows prefixing, suffixing around keys based on hash sums
 	MkHashKey(string) string
-	// Creates an S3 URL that utilizes the DefaultBucket
+	// Creates an Service URL that utilizes the DefaultBucket
 	MkURL(string) string
 }
 
-// Wrapper around S3 Downloader for stubbing
+// Wrapper around Service Downloader for stubbing
 type Downloader interface {
 	Download(w io.WriterAt, i *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (int64, error)
 }
 
-// Wrapper around S3 Uploader for stubbing
+// Wrapper around Service Uploader for stubbing
 type Uploader interface {
 	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
 }
@@ -149,7 +151,7 @@ func ObjectExistsS3(info S3Info, key string) (*s3.HeadObjectOutput, bool, error)
 	sess := s3.New(info.GetSession())
 	obj, err := sess.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(info.DefaultBucket()),
-		Key:    aws.String(key),
+		Key:    aws.String(info.MkHashKey(key)),
 	})
 
 	if err == nil {
@@ -203,7 +205,7 @@ func DownloadS3(downloader Downloader, bucket, key string) (*os.File, error) {
 		return nil, errors.Wrapf(err, "Unable to create temp file while downloading s3 file %v:%v", bucket, key)
 	}
 
-	// Write the contents of S3 Object to the file
+	// Write the contents of Service Object to the file
 	_, err = downloader.Download(file, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
