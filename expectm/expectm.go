@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/monstercat/lm"
 	"github.com/tidwall/gjson"
 
 	mtime "github.com/monstercat/golib/time"
@@ -39,6 +38,23 @@ func CheckJSON(obj interface{}, expected *ExpectedM) error {
 	return CheckJSONBytes(bytes, expected)
 }
 
+func MustInt(val interface{}) (int, error) {
+	switch v := val.(type) {
+	case float64:
+		return int(v), nil
+	case float32:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	case int:
+		return v, nil
+	default:
+		return 0, errors.New("Length must be of type int")
+	}
+}
+
 func CheckGJSONLength(k string, expectedValue, actualValue interface{}) error {
 	var test int
 	var comparator rune
@@ -51,7 +67,7 @@ func CheckGJSONLength(k string, expectedValue, actualValue interface{}) error {
 		}
 		comparator = rune(str[0])
 	} else {
-		v, err := lm.MustInt(expectedValue)
+		v, err := MustInt(expectedValue)
 		if err != nil {
 			return err
 		}
