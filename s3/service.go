@@ -117,8 +117,8 @@ func (s *Service) DownloadRange(filepath string, w io.WriterAt, start, finish in
 
 // Put here is generally only used if you do not care about progress or status updates as it hides
 // this information from the user. You only get the final error or non-error code.
-func (s *Service) Put(filepath string, filesize int, r io.Reader) error {
-	ch := s.PutWithStatus(filepath, filesize, r)
+func (s *Service) Put(filepath string, filesize int, chunks int, r io.Reader) error {
+	ch := s.PutWithStatus(filepath, filesize, chunks, r)
 	for {
 		select {
 		case <-time.After(s.Timeout):
@@ -136,14 +136,17 @@ func (s *Service) Put(filepath string, filesize int, r io.Reader) error {
 
 // Tries to put the file in Service. Use the returned channel to retrieve messages from the
 // upload. With small uploads, the only statuses returned should be Ok and Error.
-func (s *Service) PutWithStatus(filepath string, filesize int, r io.Reader) chan UploadStatus {
-	if filesize <= s.MinUploadSizeChunked {
+func (s *Service) PutWithStatus(filepath string, filesize int, chunks int, r io.Reader) chan UploadStatus {
+	if chunks == 1 && filesize <= s.MinUploadSizeChunked {
 		return s.putSimply(filepath, r)
 	}
 
 	// Here, we need to put the file in a more complicated manner!
 	// in this case, there might be more details to send back to the Client.
-	chunks := int(math.Ceil(float64(filesize) / float64(s.ChunkSizeLimit)))
+	// By doing this, we allow the higher level function to determine the # of chunks
+	if chunks == -1 {
+		chunks = int(math.Ceil(float64(filesize) / float64(s.ChunkSizeLimit)))
+	}
 
 	upload := &Upload{
 		Filepath:       filepath,
@@ -151,7 +154,7 @@ func (s *Service) PutWithStatus(filepath string, filesize int, r io.Reader) chan
 		R:              r,
 		s:              s,
 		Expiry:         time.Now().Add(s.IncompleteUploadExpiry),
-		notifier:       make(chan UploadStatus),
+		notifier:       make(chan UploadStatus, 2),
 		parts:          make(chan []byte, chunks),
 		completedParts: make([]*s3.CompletedPart, 0, chunks),
 	}
@@ -167,15 +170,21 @@ func (s *Service) ResumePutWithStatus(filepath string, offset int, r io.Reader) 
 	if upload == nil {
 		return nil, ErrUploadNotFound
 	}
-	if upload.Uploaded != offset {
-		return nil, ErrResumedUploadOffsetInvalid
-	}
 
 	// Take this upload and put it back on the channel, but with a new reader.
-	s.removeFromIncomplete(filepath)
 	upload.R = r
 	upload.Expiry = time.Now().Add(s.IncompleteUploadExpiry)
-	s.uploads <- upload
+
+	// Send on the channel to begin processing!
+	if !upload.getIsProcessing() {
+		// Remove parts. It has stopped processing meaning there is an error.
+		l := len(upload.parts)
+		close(upload.parts)
+		upload.parts = make(chan []byte, l)
+
+		s.removeFromIncomplete(filepath)
+		s.uploads <- upload
+	}
 	go upload.Send()
 
 	return upload.notifier, nil
@@ -220,8 +229,9 @@ func (s *Service) putSimply(filepath string, r io.Reader) chan UploadStatus {
 	ch := make(chan UploadStatus, 1)
 	if err != nil {
 		ch <- errStatus(err)
+	} else {
+		ch <- okStatus()
 	}
-	ch <- okStatus()
 	return ch
 }
 
@@ -242,10 +252,15 @@ func (s *Service) RunUploader() {
 			s.lock.Unlock()
 		case upload := <-s.uploads:
 			go func() {
+				upload.setIsProcessing()
+				defer upload.setDoneProcessing()
+
+				s.registerIncompleteUpload(upload)
 				if err := upload.Run(); err != nil {
-					s.registerIncompleteUpload(upload)
 					upload.notifier <- errStatus(err)
+					return
 				}
+				s.removeFromIncomplete(upload.Filepath)
 			}()
 		}
 	}
