@@ -132,7 +132,7 @@ func TestChunkedUpload(t *testing.T) {
 	}
 	defer f.Close()
 
-	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, f)
+	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, -1, f)
 
 	numProgress := 0
 L:
@@ -192,7 +192,7 @@ func TestResumeChunkUpload(t *testing.T) {
 	}
 	defer f.Close()
 
-	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, f)
+	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, 2, f)
 
 L:
 	for {

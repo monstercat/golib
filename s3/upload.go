@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -55,6 +56,10 @@ type Upload struct {
 	// Information required for S3 uploading
 	uploadId       *string
 	completedParts []*s3.CompletedPart
+
+	// Whether or not it is currently in processing
+	isProcessing bool
+	lock         sync.RWMutex
 }
 
 // This run function will load the parts from the channel and send them to S3, after initializing the transfer.
@@ -149,7 +154,7 @@ func (u *Upload) completeUpload() error {
 // This function sends to the parts channel from the reader.
 func (u *Upload) Send() {
 	for {
-		b := make([]byte, u.s.ChunkSizeLimit)
+		b := make([]byte, u.s.ChunkSizeLimit * 2)
 		n, err := u.R.Read(b)
 		if err == io.EOF {
 			// do nothing!
@@ -165,4 +170,22 @@ func (u *Upload) Send() {
 
 		u.parts <- b[:n]
 	}
+}
+
+func (u *Upload) setIsProcessing() {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	u.isProcessing = true
+}
+
+func (u *Upload) setDoneProcessing() {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	u.isProcessing = false
+}
+
+func (u *Upload) getIsProcessing() bool {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	return u.isProcessing
 }
