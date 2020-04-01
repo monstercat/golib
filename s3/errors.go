@@ -3,7 +3,6 @@ package s3util
 import "errors"
 
 var (
-	ErrUploadNotFound             = errors.New("upload not found")
 	ErrResumedUploadOffsetInvalid = errors.New("offset does not match uploaded status")
 	ErrTimeout                    = errors.New("timeout")
 )

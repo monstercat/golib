@@ -33,6 +33,13 @@ type Handler struct {
 	R       *http.Request
 	FS      DataServiceInterface
 	Timeout time.Duration
+	ErrCH   chan error
+
+	// Delay between reading of successive messages.
+	// This gives time for the server to handle messages
+	// that are already in the system. This will typically be
+	// something like 10ms.
+	MessageDelay time.Duration
 
 	// Id of the currently being uploaded data and
 	// whether or not the upload itself has started.
@@ -64,7 +71,7 @@ func (h *Handler) ctx() (context.Context, context.CancelFunc) {
 //
 // Input error channel is to handle errors from the file service.
 // The calling function can continue to send messages
-func (h *Handler) Handle(ch chan error) error {
+func (h *Handler) Handle() error {
 	// Initialize parameters
 	h.close = make(chan bool)
 
@@ -81,7 +88,7 @@ func (h *Handler) Handle(ch chan error) error {
 		select {
 		case <-h.close:
 			return err
-		case <-time.After(time.Millisecond):
+		case <-time.After(h.MessageDelay):
 		}
 
 		err := h.decodeNextMessage()
@@ -89,7 +96,7 @@ func (h *Handler) Handle(ch chan error) error {
 		case isDataError(err) || err == ErrInvalidMessageType:
 			h.Send(NewErrorMessage(err))
 		case err != nil:
-			ch <- err
+			h.ErrCH <- err
 		}
 	}
 
@@ -126,7 +133,7 @@ func (h *Handler) decodeNextMessage() error {
 			return h.FS.ResumeUpload(h.startMsg.Identifier, r)
 		}
 		h.hasStarted = true
-		return h.FS.NewUpload( h.startMsg.Identifier, h.startMsg.ContentLength, r)
+		return h.FS.NewUpload(h.startMsg.Identifier, h.startMsg.ContentLength, r)
 	// If it is text, it should be a StartMessage, which is the
 	// only message that the user can send. In this case, we can only
 	// parse this message and return the error.

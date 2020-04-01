@@ -13,11 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
+	"github.com/monstercat/golib/data"
 )
 
 const DefaultChunkSizeLimit = 1024 * 1024 * 50
 const DefaultIncompleteExpiry = time.Hour * 24
 
+// Adheres to the data.Service interface
 type Service struct {
 	Bucket      string
 	Region      string
@@ -125,9 +128,9 @@ func (s *Service) Put(filepath string, filesize int, chunks int, r io.Reader) er
 			return ErrTimeout
 		case status := <-ch:
 			switch status.Code {
-			case UploadStatusCodeOk:
+			case data.UploadStatusCodeOk:
 				return nil
-			case UploadStatusCodeError:
+			case data.UploadStatusCodeError:
 				return status.Error
 			}
 		}
@@ -136,7 +139,7 @@ func (s *Service) Put(filepath string, filesize int, chunks int, r io.Reader) er
 
 // Tries to put the file in Service. Use the returned channel to retrieve messages from the
 // upload. With small uploads, the only statuses returned should be Ok and Error.
-func (s *Service) PutWithStatus(filepath string, filesize int, chunks int, r io.Reader) chan UploadStatus {
+func (s *Service) PutWithStatus(filepath string, filesize int, chunks int, r io.Reader) chan data.UploadStatus {
 	if chunks == 1 && filesize <= s.MinUploadSizeChunked {
 		return s.putSimply(filepath, r)
 	}
@@ -154,7 +157,7 @@ func (s *Service) PutWithStatus(filepath string, filesize int, chunks int, r io.
 		R:              r,
 		s:              s,
 		Expiry:         time.Now().Add(s.IncompleteUploadExpiry),
-		notifier:       make(chan UploadStatus, 2),
+		notifier:       make(chan data.UploadStatus, 2),
 		parts:          make(chan []byte, chunks),
 		completedParts: make([]*s3.CompletedPart, 0, chunks),
 	}
@@ -165,10 +168,10 @@ func (s *Service) PutWithStatus(filepath string, filesize int, chunks int, r io.
 }
 
 // Resumes an incomplete upload.
-func (s *Service) ResumePutWithStatus(filepath string, offset int, r io.Reader) (chan UploadStatus, error) {
-	upload := s.GetIncompleteUpload(filepath)
+func (s *Service) ResumePutWithStatus(filepath string, offset int, r io.Reader) (chan data.UploadStatus, error) {
+	upload := s.getIncompleteUpload(filepath)
 	if upload == nil {
-		return nil, ErrUploadNotFound
+		return nil, data.ErrUploadNotFound
 	}
 
 	// Take this upload and put it back on the channel, but with a new reader.
@@ -200,10 +203,19 @@ func (s *Service) Delete(filepath string) error {
 }
 
 // Retrieves the incomplete upload, it if exists.
-func (s *Service) GetIncompleteUpload(filepath string) *Upload {
+func (s *Service) GetIncompleteUpload(filepath string) data.Upload {
+	return s.getIncompleteUpload(filepath)
+}
+
+func (s *Service) getIncompleteUpload(filepath string) *Upload {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.incomplete[filepath]
+}
+
+
+func (s *Service) GetMinChunkSize() int {
+	return s.ChunkSizeLimit
 }
 
 func (s *Service) removeFromIncomplete(filepath string) {
@@ -218,7 +230,7 @@ func (s *Service) registerIncompleteUpload(upload *Upload) {
 	s.incomplete[ upload.Filepath ] = upload
 }
 
-func (s *Service) putSimply(filepath string, r io.Reader) chan UploadStatus {
+func (s *Service) putSimply(filepath string, r io.Reader) chan data.UploadStatus {
 	upl := s3manager.NewUploader(s.Session)
 	_, err := upl.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(s.Bucket),
@@ -226,11 +238,11 @@ func (s *Service) putSimply(filepath string, r io.Reader) chan UploadStatus {
 		Body:   r,
 	})
 
-	ch := make(chan UploadStatus, 1)
+	ch := make(chan data.UploadStatus, 1)
 	if err != nil {
-		ch <- errStatus(err)
+		ch <- data.ErrUploadStatus(err)
 	} else {
-		ch <- okStatus()
+		ch <- data.OkUploadStatus()
 	}
 	return ch
 }
@@ -257,7 +269,7 @@ func (s *Service) RunUploader() {
 
 				s.registerIncompleteUpload(upload)
 				if err := upload.Run(); err != nil {
-					upload.notifier <- errStatus(err)
+					upload.notifier <- data.ErrUploadStatus(err)
 					return
 				}
 				s.removeFromIncomplete(upload.Filepath)
