@@ -9,33 +9,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+
+	"github.com/monstercat/golib/data"
 )
-
-type UploadStatusCode string
-
-var (
-	UploadStatusCodeOk       UploadStatusCode = "Ok"
-	UploadStatusCodeProgress UploadStatusCode = "Progress"
-	UploadStatusCodeError    UploadStatusCode = "Error"
-)
-
-type UploadStatus struct {
-	Code    UploadStatusCode
-	Message string
-	Error   error
-}
-
-func okStatus() UploadStatus {
-	return UploadStatus{
-		Code: UploadStatusCodeOk,
-	}
-}
-func errStatus(err error) UploadStatus {
-	return UploadStatus{
-		Code:  UploadStatusCodeError,
-		Error: err,
-	}
-}
 
 // This is a file upload!
 type Upload struct {
@@ -50,7 +26,7 @@ type Upload struct {
 	Expiry time.Time
 
 	s        *Service
-	notifier chan UploadStatus
+	notifier chan data.UploadStatus
 	parts    chan []byte
 
 	// Information required for S3 uploading
@@ -62,6 +38,13 @@ type Upload struct {
 	lock         sync.RWMutex
 }
 
+func (u *Upload) GetFilepath() string {
+	return u.Filepath
+}
+func (u *Upload) GetUploaded() int {
+	return u.Uploaded
+}
+
 // This run function will load the parts from the channel and send them to S3, after initializing the transfer.
 // This is called by the Service's eternally running goroutine after receiving the upload request from a channel.
 func (u *Upload) Run() error {
@@ -71,7 +54,7 @@ func (u *Upload) Run() error {
 			// returning error here allows for the upload to be sent back to incomplete status.
 			//
 			// In this case, it shouldn't be sent back to incomplete, as the upload never even started.
-			u.notifier <- errStatus(InitError{err})
+			u.notifier <- data.ErrUploadStatus(InitError{err})
 			return nil
 		}
 	}
@@ -85,8 +68,8 @@ func (u *Upload) Run() error {
 			if err := u.uploadPart(part); err != nil {
 				return UploadError{err}
 			}
-			u.notifier <- UploadStatus{
-				Code:    UploadStatusCodeProgress,
+			u.notifier <- data.UploadStatus{
+				Code:    data.UploadStatusCodeProgress,
 				Message: strconv.Itoa(u.Uploaded),
 			}
 			if len(u.completedParts) != cap(u.completedParts) {
@@ -95,8 +78,8 @@ func (u *Upload) Run() error {
 			if err := u.completeUpload(); err != nil {
 				return UploadError{err}
 			}
-			u.notifier <- UploadStatus{
-				Code:    UploadStatusCodeOk,
+			u.notifier <- data.UploadStatus{
+				Code:    data.UploadStatusCodeOk,
 				Message: "Upload completed",
 			}
 			return nil
@@ -161,7 +144,7 @@ func (u *Upload) Send() {
 			return
 		}
 		if err != nil {
-			u.notifier <- errStatus(err)
+			u.notifier <- data.ErrUploadStatus(err)
 			return
 		}
 		if n == 0 {
