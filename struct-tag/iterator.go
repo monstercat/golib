@@ -13,8 +13,24 @@ type StructFieldIterator func(reflect.StructField, reflect.Value)
 
 func IterateStructFields(e interface{}, it StructFieldIterator) {
 	refVal := reflect.ValueOf(e).Elem()
-	for i := 0; i < refVal.NumField(); i++ {
-		it(refVal.Type().Field(i), refVal.Field(i))
+	refType := reflect.TypeOf(e).Elem()
+
+	var numField int
+	if refType.Kind() == reflect.Slice {
+		refType = refType.Elem()
+		if refType.Kind() == reflect.Ptr {
+			refType = refType.Elem()
+		}
+		numField = refType.NumField()
+
+		// Also need to change refVal.
+		refVal = reflect.Indirect(reflect.New(refType))
+	}else{
+		numField = refVal.NumField()
+	}
+
+	for i := 0; i < numField; i++ {
+		it(refType.Field(i), refVal.Field(i))
 	}
 }
 

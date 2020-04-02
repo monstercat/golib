@@ -14,7 +14,7 @@ import (
 
 func TestGetColumnsByTag(t *testing.T) {
 
-	var rp struct {
+	type rptype struct {
 		ArtistsTitle         string         `db:"artists_title"`
 		Brand                NullString     `db:"brand"`
 		BrandId              NullInt        `db:"brand_id"`
@@ -43,8 +43,23 @@ func TestGetColumnsByTag(t *testing.T) {
 		Type                 string         `db:"type"`
 		UPC                  string         `db:"upc" select:"coalesce"`
 	}
+	var rp rptype
+	var rps []rptype
 
 	cols := GetColumnsByTag(&rp, "t1.")
+	if len(cols) != 27 {
+		t.Fatal("expecting 27 columns")
+	}
+	for _, v := range cols {
+		if strings.Index(v, "t1.") == -1 {
+			t.Errorf("Expecting prefix %s - column name: %s", "t1.", v)
+		}
+	}
+
+	cols = GetColumnsByTag(&rps, "t1.")
+	if len(cols) != 27 {
+		t.Fatal("expecting 27 columns")
+	}
 	for _, v := range cols {
 		if strings.Index(v, "t1.") == -1 {
 			t.Errorf("Expecting prefix %s - column name: %s", "t1.", v)
