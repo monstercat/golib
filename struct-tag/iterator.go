@@ -16,6 +16,10 @@ func IterateStructFields(e interface{}, it StructFieldIterator) {
 	refType := reflect.TypeOf(e).Elem()
 
 	var numField int
+	// If the element is a slice, we get the underlying element.
+	// If the underlying element is a pointer, we remove the pointer (get the underlying element).
+	// This is required to get the proper reflect Value to iterate on.
+	// Otherwise, NumField and Field do not exist. 
 	if refType.Kind() == reflect.Slice {
 		refType = refType.Elem()
 		if refType.Kind() == reflect.Ptr {
