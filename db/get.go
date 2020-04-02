@@ -20,3 +20,4 @@ func Select(db sqlx.Queryer, slice interface{}, qry squirrel.SelectBuilder) erro
 	}
 	return sqlx.Select(db, slice, sql, args...)
 }
+
