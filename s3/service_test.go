@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/monstercat/golib/data"
 )
 
 var (
@@ -17,7 +19,7 @@ var (
 	service = &Service{
 		Bucket:      Bucket,
 		Region:      Region,
-		Timeout:     15 * time.Second,
+		Timeout:     50 * time.Second,
 		Concurrency: 1,
 
 		ChunkSizeLimit:         DefaultChunkSizeLimit,
@@ -74,7 +76,7 @@ func TestStandardS3Services(t *testing.T) {
 	}
 	defer f.Close()
 
-	if err := service.Put(TestFilename1, TestFilesize1, f); err != nil {
+	if err := service.Put(TestFilename1, TestFilesize1, 1, f); err != nil {
 		t.Fatal(err)
 	}
 	exists, err := service.Exists(TestFilename1)
@@ -142,12 +144,12 @@ L:
 			t.Fatal("timeout")
 		case status := <-notifier:
 			switch status.Code {
-			case UploadStatusCodeOk:
+			case data.UploadStatusCodeOk:
 				break L
-			case UploadStatusCodeError:
+			case data.UploadStatusCodeError:
 				t.Fatal(status.Error)
 				return
-			case UploadStatusCodeProgress:
+			case data.UploadStatusCodeProgress:
 				numProgress++
 			}
 		}
@@ -192,7 +194,8 @@ func TestResumeChunkUpload(t *testing.T) {
 	}
 	defer f.Close()
 
-	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, 2, f)
+
+	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, -1, f)
 
 L:
 	for {
@@ -201,9 +204,9 @@ L:
 			t.Fatal("timeout")
 		case status := <-notifier:
 			switch status.Code {
-			case UploadStatusCodeOk:
+			case data.UploadStatusCodeOk:
 				t.Fatal("Expecting a timeout error!")
-			case UploadStatusCodeError:
+			case data.UploadStatusCodeError:
 				break L
 			}
 		}
@@ -223,10 +226,10 @@ L2:
 			t.Fatal("timeout")
 		case status := <-notifier:
 			switch status.Code {
-			case UploadStatusCodeOk:
+			case data.UploadStatusCodeOk:
 				// We should be good!
 				break L2
-			case UploadStatusCodeError:
+			case data.UploadStatusCodeError:
 				t.Fatal(status.Error)
 				return
 			}
