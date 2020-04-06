@@ -3,12 +3,18 @@ package wsupload
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"nhooyr.io/websocket"
+)
+
+var (
+	ErrClosedByClient = errors.New("closed by client")
 )
 
 // This package implements a websocket handler with a protocol to handle (sequential) resumable data uploads. It
@@ -93,6 +99,9 @@ func (h *Handler) Handle() error {
 
 		err := h.decodeNextMessage()
 		switch {
+		case err == ErrClosedByClient:
+			// closed by client. Nothing to handle anymore.
+			return err
 		case isDataError(err) || err == ErrInvalidMessageType:
 			h.Send(NewErrorMessage(err))
 		case err != nil:
@@ -113,6 +122,9 @@ func (h *Handler) decodeNextMessage() error {
 
 	t, r, err := h.conn.Reader(ctx)
 	if err != nil {
+		if strings.Contains(err.Error(), "WebSocket closed") {
+			return ErrClosedByClient
+		}
 		return DataError{err}
 	}
 

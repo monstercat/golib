@@ -137,7 +137,7 @@ func (u *Upload) completeUpload() error {
 // This function sends to the parts channel from the reader.
 func (u *Upload) Send() {
 	for {
-		b := make([]byte, u.s.ChunkSizeLimit * 2)
+		b := make([]byte, u.s.ChunkSizeLimit)
 		n, err := u.R.Read(b)
 		if err == io.EOF {
 			// do nothing!
