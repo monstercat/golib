@@ -57,6 +57,9 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 	case pgnull.NullTime:
 		isZero = dt.Time.IsZero()
 		checked = true
+	case sql.NullBool:
+		isZero = !dt.Valid || !dt.Bool
+		checked = true
 	case time.Time:
 		isZero = dt.IsZero()
 		data = dt
