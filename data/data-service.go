@@ -55,5 +55,5 @@ type ChunkService interface{
 	PutWithStatus(filepath string, filesize int, chunks int, r io.Reader) chan UploadStatus
 	ResumePutWithStatus(filepath string, offset int, r io.Reader) (chan UploadStatus, error)
 	GetIncompleteUpload(filepath string) Upload
-	GetMinChunkSize() int
+	GetChunkSize() int
 }
