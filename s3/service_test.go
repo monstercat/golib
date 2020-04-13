@@ -185,7 +185,7 @@ func TestResumeChunkUpload(t *testing.T) {
 	defer service.Shutdown()
 
 	// File size is large! This is because we need to test the chunked file uploader.
-	makeFakeFile(TestFilename2, TestFilesize2/2)
+	makeFakeFile(TestFilename2, DefaultChunkSizeLimit)
 	defer cleanupFile(TestFilename2)
 
 	f, err := os.Open("./" + TestFilename2)
@@ -212,9 +212,19 @@ L:
 		}
 	}
 
+	makeFakeFile(TestFilename2  + "-part2", TestFilesize2 - DefaultChunkSizeLimit)
+	defer cleanupFile(TestFilename2  + "-part2")
+
+	f, err = os.Open("./" + TestFilename2 + "-part2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+
 	// We need to now resume the upload!
 	f.Seek(0,0)
-	notifier, err = service.ResumePutWithStatus(TestFilename2, TestFilesize2/2, f)
+	notifier, err = service.ResumePutWithStatus(TestFilename2, TestFilesize2 - DefaultChunkSizeLimit, f)
 	if err != nil {
 		t.Fatal(err)
 	}
