@@ -64,8 +64,11 @@ func (u *Upload) Run() error {
 		case <-time.After(u.s.Timeout):
 			return ErrTimeout
 		case part := <-u.parts:
-			//TODO: max retries
 			if err := u.uploadPart(part); err != nil {
+				u.notifier <- data.UploadStatus{
+					Code:    data.UploadStatusCodeError,
+					Error:   err,
+				}
 				return UploadError{err}
 			}
 			u.notifier <- data.UploadStatus{
@@ -76,6 +79,10 @@ func (u *Upload) Run() error {
 				continue
 			}
 			if err := u.completeUpload(); err != nil {
+				u.notifier <- data.UploadStatus{
+					Code:    data.UploadStatusCodeError,
+					Error:   err,
+				}
 				return UploadError{err}
 			}
 			u.notifier <- data.UploadStatus{
