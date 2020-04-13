@@ -214,7 +214,7 @@ func (s *Service) getIncompleteUpload(filepath string) *Upload {
 }
 
 
-func (s *Service) GetMinChunkSize() int {
+func (s *Service) GetChunkSize() int {
 	return s.ChunkSizeLimit
 }
 
