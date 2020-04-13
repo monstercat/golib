@@ -2,6 +2,7 @@ package s3util
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strconv"
 	"sync"
@@ -11,6 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/monstercat/golib/data"
+)
+
+var (
+	ErrChunkSizeInvalid = errors.New("chunk size is invalid")
 )
 
 // This is a file upload!
@@ -64,10 +69,18 @@ func (u *Upload) Run() error {
 		case <-time.After(u.s.Timeout):
 			return ErrTimeout
 		case part := <-u.parts:
+			isLastPart := len(u.completedParts) == cap(u.completedParts)-1
+			if !isLastPart && len(part) < u.s.ChunkSizeLimit {
+				u.notifier <- data.UploadStatus{
+					Code:  data.UploadStatusCodeError,
+					Error: ErrChunkSizeInvalid,
+				}
+				return UploadError{ErrChunkSizeInvalid}
+			}
 			if err := u.uploadPart(part); err != nil {
 				u.notifier <- data.UploadStatus{
-					Code:    data.UploadStatusCodeError,
-					Error:   err,
+					Code:  data.UploadStatusCodeError,
+					Error: err,
 				}
 				return UploadError{err}
 			}
@@ -80,8 +93,8 @@ func (u *Upload) Run() error {
 			}
 			if err := u.completeUpload(); err != nil {
 				u.notifier <- data.UploadStatus{
-					Code:    data.UploadStatusCodeError,
-					Error:   err,
+					Code:  data.UploadStatusCodeError,
+					Error: err,
 				}
 				return UploadError{err}
 			}
