@@ -20,6 +20,7 @@ func TestSetMap(t *testing.T) {
 		StringArr     pq.StringArray    `db:"string_arr"`
 		NullString    sql.NullString    `db:"null_string"`
 		NullString2   pgnull.NullString `db:"null_string2"`
+		NullInt1      pgnull.NullInt    `db:"null_int_1"`
 	}{
 		Id:            "1234566787",
 		Name:          "Test Name",
@@ -28,6 +29,7 @@ func TestSetMap(t *testing.T) {
 		StringArr:     []string{"123", "456"},
 		NullString:    sql.NullString{Valid: true, String: "test"},
 		NullString2:   pgnull.NewNullString("test"),
+		NullInt1:      pgnull.NewNullInt(23),
 	}
 
 	updateM := SetMap(&x, false)
@@ -97,6 +99,11 @@ func TestSetMap(t *testing.T) {
 		{
 			Result: insertM,
 			Key:    "null_string2",
+			Exists: true,
+		},
+		{
+			Result: insertM,
+			Key:    "null_int_1",
 			Exists: true,
 		},
 	}
