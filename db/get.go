@@ -1,6 +1,8 @@
 package dbUtil
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
@@ -21,3 +23,14 @@ func Select(db sqlx.Queryer, slice interface{}, qry squirrel.SelectBuilder) erro
 	return sqlx.Select(db, slice, sql, args...)
 }
 
+func Exists(db sqlx.Queryer, qry squirrel.SelectBuilder) (bool, error) {
+	var exists bool
+	if err := Get(db, &exists, qry.Prefix("SELECT EXISTS(").Suffix(")")); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func MkJoinStr(t1, c1, t2, c2 string) string {
+	return fmt.Sprintf("%s ON %[1]s.%[2]s = %[3]s.%[4]s", t1, c1, t2, c2)
+}
