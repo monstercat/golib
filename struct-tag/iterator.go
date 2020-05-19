@@ -29,7 +29,11 @@ func IterateStructFields(e interface{}, it StructFieldIterator) {
 
 		// Also need to change refVal.
 		refVal = reflect.Indirect(reflect.New(refType))
-	}else{
+	} else if refType.Kind() == reflect.Interface {
+		refVal = refVal.Elem()
+		refType = refVal.Type()
+		numField = refVal.NumField()
+	} else {
 		numField = refVal.NumField()
 	}
 
