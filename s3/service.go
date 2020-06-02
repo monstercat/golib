@@ -210,7 +210,15 @@ func (s *Service) GetIncompleteUpload(filepath string) data.Upload {
 func (s *Service) getIncompleteUpload(filepath string) *Upload {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.incomplete[filepath]
+
+	// We cannot simply return s.incomplete[filepath] because the `nil` that results here will not evaluate properly
+	// when compared to nil (e.g., if res == nil).
+	// See https://www.calhoun.io/when-nil-isnt-equal-to-nil/
+	f, ok := s.incomplete[filepath]
+	if !ok {
+		return nil
+	}
+	return f
 }
 
 
