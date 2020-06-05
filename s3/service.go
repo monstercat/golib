@@ -1,7 +1,6 @@
 package s3util
 
 import (
-	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -83,39 +82,6 @@ func (s *Service) Exists(filepath string) (bool, error) {
 		return false, err
 	}
 	return false, nil
-}
-
-// Gets a file reader from Service
-func (s *Service) Get(filepath string) (io.ReadCloser, error) {
-	out, err := s.Client.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(filepath),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out.Body, nil
-}
-
-func (s *Service) Download(filepath string, w io.WriterAt) error {
-	dlr := s3manager.NewDownloader(s.Session)
-	dlr.Concurrency = s.Concurrency
-	_, err := dlr.Download(w, &s3.GetObjectInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(filepath),
-	})
-	return err
-}
-
-func (s *Service) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
-	dlr := s3manager.NewDownloader(s.Session)
-	dlr.Concurrency = s.Concurrency
-	_, err := dlr.Download(w, &s3.GetObjectInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(filepath),
-		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", start, finish)),
-	})
-	return err
 }
 
 // Put here is generally only used if you do not care about progress or status updates as it hides
