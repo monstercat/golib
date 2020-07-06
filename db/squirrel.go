@@ -37,7 +37,7 @@ func getIlikeSql(vals map[string]interface{}, join string) (sql string, args []i
 		exprs = append(exprs, fmt.Sprintf("%s ILIKE ?", key))
 		args = append(args, val)
 	}
-	sql = strings.Join(exprs, join)
+	sql = "(" + strings.Join(exprs, join) + ")"
 	return
 }
 
