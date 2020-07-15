@@ -65,3 +65,18 @@ func GetOperatorValues(ops []Operator) []string {
 	}
 	return xs
 }
+
+func (o *Operators) Get(keys ...string) []Operator {
+	if len(keys) == 0 {
+		return nil
+	}
+	var os []Operator
+	for _, k := range keys {
+		op, ok := o.Values[k]
+		if !ok {
+			continue
+		}
+		os = append(os, op...)
+	}
+	return os
+}
