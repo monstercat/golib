@@ -131,3 +131,17 @@ func (p *Parser) FindKeyOrValue(str string) (key string, value string, n int) {
 
 	return
 }
+
+func OperatorExtractComparator(v string) (string, string) {
+	switch {
+	case strings.HasPrefix(v, "="):
+		return v[1:], "="
+	case strings.HasPrefix(v, ">"), strings.HasPrefix(v, "<"):
+		if v[1] == '=' {
+			return v[2:], v[0:2]
+		}
+		return v[1:], v[0:1]
+	default:
+		return v, "="
+	}
+}
