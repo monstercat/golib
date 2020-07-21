@@ -76,6 +76,15 @@ func (c SearchOperatorConfigUUID) Apply(os, rem []operator.Operator, a *Accumula
 		return squirrel.Expr(fmt.Sprintf("%s%s%s = ?", prefix, c.Field, doNot(o)), o.Value)
 	})
 }
+func NewUUIDOperator(field string, keys ...string) SearchOperatorConfigUUID {
+	return SearchOperatorConfigUUID{
+		StringSearchOperatorConfigBase{
+			SearchOperatorConfigBase{
+				Field: field, Keys: keys,
+			},
+		},
+	}
+}
 
 type SearchOperatorConfigStringLike struct {
 	StringSearchOperatorConfigBase
