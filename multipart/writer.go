@@ -1,5 +1,8 @@
 package multipart
 
+// Package multipart wraps the standard go library's multipart.Writer to add a Marshal method which uses reflection
+// to determine whether the field should be ignored, added as a form field, or added as a form file.
+
 import (
 	"fmt"
 	"io"
