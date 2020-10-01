@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"reflect"
 
+	"github.com/monstercat/golib/errors"
 	structTag "github.com/monstercat/golib/struct-tag"
 )
 
@@ -30,7 +31,7 @@ func NewWriter(w io.Writer) *Writer {
 }
 
 func (w *Writer) Marshal(values interface{}) (err error) {
-	var errs Errors
+	var errs errors.Errors
 	structTag.IterateStructFields(values, func(f reflect.StructField, v reflect.Value) {
 		t := &tags{}
 		t.Parse(f.Tag.Get(StructTag))
@@ -44,6 +45,9 @@ func (w *Writer) Marshal(values interface{}) (err error) {
 			return
 		}
 		if f.Type.Kind() == reflect.Array {
+			return
+		}
+		if f.Type.Kind() == reflect.Slice {
 			return
 		}
 

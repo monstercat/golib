@@ -1,4 +1,4 @@
-package multipart
+package errors
 
 import "strings"
 

@@ -67,7 +67,7 @@ func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 				// than the ones specifically defined above.
 				return
 			}
-			if f.Type.Kind() == reflect.Array {
+			if f.Type.Kind() == reflect.Array || f.Type.Kind() == reflect.Slice {
 				// If data is an array, we need to wrap it as a
 				// postgresable array.
 				data = pq.Array(data)
