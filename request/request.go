@@ -106,6 +106,11 @@ func DecodeResponseBody(p *Params, response interface{}) error {
 	return json.Unmarshal([]byte(p.ResponseBody), response)
 }
 
+type CustomPayload interface {
+	io.Reader
+	ContentType() string
+}
+
 // Request makes an http request with params and optional payload
 // to specified Url in params.Url.
 // It will save respond body value into body.
@@ -115,13 +120,17 @@ func Request(params *Params, payload interface{}, body interface{}) error {
 	var contentType string
 	var contentLength int
 	if payload != nil {
-		if v, ok := payload.(io.Reader); ok {
+		switch v := payload.(type) {
+		case CustomPayload:
 			_payload = v
-		} else if v, ok := payload.(url.Values); ok {
+			contentType = v.ContentType()
+		case io.Reader:
+			_payload = v
+		case url.Values:
 			_payload = strings.NewReader(v.Encode())
 			contentType = "application/x-www-form-urlencoded"
 			contentLength = len(v.Encode())
-		} else {
+		default:
 			data, err := json.Marshal(payload)
 			if err != nil {
 				return err
