@@ -104,7 +104,7 @@ func (p *Parser) FindKeyOrValue(str string) (key string, value string, n int) {
 	matchIdx := p.KeyValueRegexp.FindStringSubmatchIndex(str)
 
 	// The match should occur right at the beginning
-	if matchIdx[0] != 0 || matchIdx[2] > 0 {
+	if matchIdx == nil || matchIdx[0] != 0 || matchIdx[2] > 0 {
 		return "", "", 0
 	}
 
@@ -125,7 +125,7 @@ func (p *Parser) FindKeyOrValue(str string) (key string, value string, n int) {
 
 	if matchIdx[8] == -1 {
 		value = str[matchIdx[6]:matchIdx[7]]
-	} else{
+	} else {
 		value = str[matchIdx[8]:matchIdx[9]]
 	}
 
