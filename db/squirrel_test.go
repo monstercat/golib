@@ -3,6 +3,8 @@ package dbUtil
 import (
 	"strings"
 	"testing"
+
+	"github.com/Masterminds/squirrel"
 )
 
 func TestILike_ToSql(t *testing.T) {
@@ -34,4 +36,24 @@ func TestILike_ToSql(t *testing.T) {
 		return
 	}
 	t.Fatalf("incorrect arguments provided. Should be 'abs' and 'ca6. Got %v",args)
+}
+
+func TestUnion(t *testing.T) {
+	qry, err := Union(
+		squirrel.Select("a", "b", "c").From("table 1"),
+		squirrel.Select("a", "b", "c").From("table 2"),
+		squirrel.Select("a", "b", "c").From("table 3"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sql, _, err := qry.ToSql()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sql != "(SELECT a, b, c FROM table 2) UNION (SELECT a, b, c FROM table 3) UNION SELECT a, b, c FROM table 1" {
+		t.Fatal("unexpected sql")
+	}
 }
