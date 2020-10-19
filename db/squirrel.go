@@ -78,8 +78,6 @@ func Union(selects ...squirrel.SelectBuilder) (squirrel.SelectBuilder, error) {
 		return selects[0], nil
 	}
 
-	// TODO: check columns to match
-
 	first := selects[0]
 	selects = selects[1:]
 
@@ -91,7 +89,7 @@ func Union(selects ...squirrel.SelectBuilder) (squirrel.SelectBuilder, error) {
 				Index:     i,
 			})
 		}
-		first = first.Prefix("("+sql+") UNION", args)
+		first = first.Prefix("("+sql+") UNION", args...)
 	}
 	return first, nil
 }
