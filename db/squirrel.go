@@ -2,9 +2,16 @@ package dbUtil
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/Masterminds/squirrel"
+)
+
+var (
+	ErrNoSelects = errors.New("no selects")
 )
 
 type ILikeAnd map[string]interface{}
@@ -18,7 +25,6 @@ type ILikeOr map[string]interface{}
 func (il ILikeOr) ToSql() (string, []interface{}, error) {
 	return getIlikeSql(il, " OR ")
 }
-
 
 func getIlikeSql(vals map[string]interface{}, join string) (sql string, args []interface{}, err error) {
 	var exprs []string
@@ -47,4 +53,45 @@ func isListType(val interface{}) bool {
 	}
 	valVal := reflect.ValueOf(val)
 	return valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice
+}
+
+type InvalidUnionError struct {
+	BaseError error
+	Index     int
+}
+
+func (e InvalidUnionError) Error() string {
+	return fmt.Sprintf("[%d]: %s", e.Index, e.BaseError)
+}
+
+// Allows for unions queries. Created another select query using suffixes. Where and Join queries should not be made
+// after calling this query, as those queries will only affect the *first* query on the list.
+func Union(selects ...squirrel.SelectBuilder) (squirrel.SelectBuilder, error) {
+	fail := func(err error) (squirrel.SelectBuilder, error) {
+		return squirrel.SelectBuilder{}, err
+	}
+
+	if len(selects) == 0 {
+		return fail(ErrNoSelects)
+	}
+	if len(selects) == 1 {
+		return selects[0], nil
+	}
+
+	// TODO: check columns to match
+
+	first := selects[0]
+	selects = selects[1:]
+
+	for i, s := range selects {
+		sql, args, err := s.ToSql()
+		if err != nil {
+			return fail(InvalidUnionError{
+				BaseError: err,
+				Index:     i,
+			})
+		}
+		first = first.Prefix("("+sql+") UNION", args...)
+	}
+	return first, nil
 }
