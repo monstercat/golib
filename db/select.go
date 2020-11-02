@@ -31,7 +31,7 @@ func DefaultCoalescer(t reflect.Type, s *SelectTags) string {
 	case "pgnull.NullInt", "sql.NullInt64", "sql.NullFloat64", "int", "int64", "int32", "float32", "float64":
 		return "0"
 	case "time.Time", "NullTime":
-		return "'0000-00-00T00:00:00Z'"
+		return "'0001-01-01T00:00:00Z'"
 	case "bool", "sql.NullBool":
 		return "false"
 	}
