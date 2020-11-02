@@ -28,9 +28,7 @@ func NewRedis(connURL string) (*Redis, error) {
 	}
 	pass, _ := u.User.Password()
 	pool := &gore.Pool{
-		InitialConn:    2,
 		RequestTimeout: time.Second * 1,
-		MaximumConn:    5,
 		Password:       pass,
 	}
 	err = pool.Dial(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()))
@@ -184,7 +182,7 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 	}
 
 	err := fn()
-	for cursor != 0 && err != nil {
+	for cursor != 0 && err == nil {
 		err = fn()
 	}
 	return count, err
