@@ -12,6 +12,7 @@ import (
 var (
 	ErrNotOk    = errors.New("not ok")
 	ErrBadReply = errors.New("bad reply")
+	ErrNoPool   = errors.New("no connection pool")
 )
 
 type Redis struct {
@@ -43,10 +44,16 @@ func NewRedis(connURL string) (*Redis, error) {
 }
 
 func (r *Redis) Close() {
+	if r.Pool == nil {
+		return
+	}
 	r.Pool.Close()
 }
 
 func (r *Redis) RunCmd(command string, args ...interface{}) (*gore.Reply, error) {
+	if r.Pool == nil {
+		return nil, ErrNoPool
+	}
 	conn, err := r.Pool.Acquire()
 	if err != nil {
 		return nil, err
