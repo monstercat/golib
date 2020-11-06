@@ -47,6 +47,10 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 	isZero = v.IsZero()
 
 	switch dt := data.(type) {
+	case []byte:
+		data = string(dt)
+		isZero = data == ""
+		checked = true
 	case map[string]interface{}:
 		isZero = len(dt) == 0
 		var err error
