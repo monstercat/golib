@@ -18,7 +18,7 @@ var (
 
 type cacheItem struct {
 	Expiration time.Time
-	Value string
+	Value      string
 }
 
 type Cache struct {
@@ -27,13 +27,14 @@ type Cache struct {
 	mutex sync.RWMutex
 }
 
-func NewCache(connURL string) (*Cache, error){
+func NewCache(connURL string) (*Cache, error) {
 	r, err := NewRedis(connURL)
 	if err != nil {
 		return nil, err
 	}
 	return &Cache{
 		Redis: r,
+		store: make(map[string]cacheItem),
 	}, nil
 }
 
@@ -46,7 +47,7 @@ func (c *Cache) Get(key string) (string, bool, error) {
 	x, ok := c.store[key]
 	c.mutex.RUnlock()
 	if ok {
-		if !x.Expiration.IsZero() && x.Expiration.Before(time.Now()){
+		if !x.Expiration.IsZero() && x.Expiration.Before(time.Now()) {
 			return "", false, nil
 		}
 		return x.Value, true, nil
@@ -72,7 +73,7 @@ func (c *Cache) Get(key string) (string, bool, error) {
 	c.mutex.Lock()
 	c.store[key] = cacheItem{
 		Expiration: t,
-		Value: str,
+		Value:      str,
 	}
 	c.mutex.Unlock()
 
@@ -96,7 +97,7 @@ func (c *Cache) Set(key, value string, expire time.Duration) error {
 		c.store = map[string]cacheItem{}
 	}
 	c.store[key] = cacheItem{
-		Value: value,
+		Value:      value,
 		Expiration: future,
 	}
 	c.mutex.Unlock()
