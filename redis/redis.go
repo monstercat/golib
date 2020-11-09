@@ -76,7 +76,7 @@ func (r *Redis) Scan(cursor int, match string) (xs []string, newCursor int, err 
 		return
 	}
 
-	if c, err := arr[0].Int(); err != nil {
+	if c, err := arr[0].Int(); err == nil {
 		newCursor = int(c)
 	}
 

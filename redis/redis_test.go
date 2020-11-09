@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -65,23 +66,38 @@ func TestRedis_Scan(t *testing.T) {
 	}
 	defer r.Close()
 
-	err = r.Set("key", "value", 0)
-	if err != nil {
-		t.Fatal(err)
+	i := 0
+	for i < 5000 {
+		err = r.Set(fmt.Sprintf("key:%d", i), fmt.Sprintf("value%d", i), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		i++
 	}
 
-	xs, cursor, err := r.Scan(0, "key")
+	xs, cursor, err := r.Scan(0, "key:*")
 	if err != nil {
 		t.Fatal(err)
-	} else if cursor != 0 {
-		t.Fatalf("Cursor should have reached end of line and be 0.")
-	} else if len(xs) != 1 {
-		t.Fatalf("Should have gotten 1 result for key search, got %d.", len(xs))
-	} else if xs[0] != "key" {
-		t.Fatalf("Key did not match.")
+	} else if len(xs) <= 0 {
+		t.Fatalf("Should have gotten some results for key search, got 0.")
+	} else if cursor == 0 {
+		t.Fatalf("Should have gotten a new cursor.")
 	}
 
-	r.Del("key")
+	// iterate through the rest
+	var count int
+	for cursor != 0 {
+		xs, cursor, err = r.Scan(cursor, "key:*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		count++
+	}
+	if count < 1 {
+		t.Errorf("Expected to have iterated via SCAN atleast once.")
+	}
+
+	r.DeleteKeyMatch("key:*")
 }
 
 func TestRedis_DeleteKeyMatch(t *testing.T) {
