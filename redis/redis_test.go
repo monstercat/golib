@@ -75,6 +75,14 @@ func TestRedis_Scan(t *testing.T) {
 		i++
 	}
 
+	// Clean up after ourselves! It's more polite.
+	defer func() {
+		count, _ := r.DeleteKeyMatch("key:*")
+		if count != 5000 {
+			t.Logf("Did not deleted expected keys, deleted %d instead.", count)
+		}
+	}()
+
 	xs, cursor, err := r.Scan(0, "key:*")
 	if err != nil {
 		t.Fatal(err)
@@ -96,8 +104,6 @@ func TestRedis_Scan(t *testing.T) {
 	if count < 1 {
 		t.Errorf("Expected to have iterated via SCAN atleast once.")
 	}
-
-	r.DeleteKeyMatch("key:*")
 }
 
 func TestRedis_DeleteKeyMatch(t *testing.T) {
