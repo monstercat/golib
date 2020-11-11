@@ -57,7 +57,18 @@ func (r *Redis) RunCmd(command string, args ...interface{}) (*gore.Reply, error)
 		return nil, err
 	}
 	defer r.Pool.Release(conn)
-	return gore.NewCommand(command, args...).Run(conn)
+	if err := conn.Auth(r.Pool.Password); err != nil {
+		return nil, err
+	}
+	reply, err := gore.NewCommand(command, args...).Run(conn)
+	if err != nil {
+		return nil, err
+	}
+	if reply.IsError() {
+		errMsg, _ := reply.Error()
+		return nil, errors.New(errMsg)
+	}
+	return reply, nil
 }
 
 func (r *Redis) Scan(cursor int, match string) (xs []string, newCursor int, err error) {
