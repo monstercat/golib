@@ -57,8 +57,10 @@ func (r *Redis) RunCmd(command string, args ...interface{}) (*gore.Reply, error)
 		return nil, err
 	}
 	defer r.Pool.Release(conn)
-	if err := conn.Auth(r.Pool.Password); err != nil {
-		return nil, err
+	if r.Pool.Password != "" {
+		if err := conn.Auth(r.Pool.Password); err != nil {
+			return nil, err
+		}
 	}
 	reply, err := gore.NewCommand(command, args...).Run(conn)
 	if err != nil {
