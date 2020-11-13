@@ -17,6 +17,22 @@ func HandleGroupedError(errs *MultipleError, err error) bool {
 	return true
 }
 
+type HeaderError string
+
+func (e HeaderError) Error() string {
+	return string(e)
+}
+
+type ColumnMismatchError struct {
+	Line     int
+	Expected int
+	Got      int
+}
+
+func (e ColumnMismatchError) Error() string {
+	return fmt.Sprintf("Line %d column count mismatch, got %d need at least %d", e.Line, e.Got, e.Expected)
+}
+
 type Error interface {
 	Error() string
 	SetField(string)
