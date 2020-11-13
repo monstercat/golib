@@ -2,7 +2,6 @@ package csv
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -53,7 +52,11 @@ func IterateCsvMap(r *csv.Reader, expectedHeaders []string, lambda MapIterator) 
 
 		// Ensure correct # of columns.
 		if len(row) < minRowCols {
-			return errors.New(fmt.Sprintf("Line %d column count mismatch, got %d need at least %d", i, len(row), minRowCols))
+			return ColumnMismatchError{
+				Line: i,
+				Expected: minRowCols,
+				Got: len(row),
+			}
 		}
 		// Create a map from the column headers.
 		// We can pass this back to the iterative function.
@@ -86,7 +89,7 @@ func CheckCsvHeaders(row, expectedHeaders []string) (int, error) {
 	var minRowCols int
 	for _, x := range expectedHeaders {
 		if v, ok := headers[x]; !ok {
-			return -1, errors.New(fmt.Sprintf("Missing header '%s'", x))
+			return -1, HeaderError(fmt.Sprintf("Missing header '%s'", x))
 		} else if v > minRowCols {
 			minRowCols = v
 		}
