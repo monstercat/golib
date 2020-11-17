@@ -120,6 +120,10 @@ func (c *Cache) Del(keys ...string) error {
 	return nil
 }
 
+func (c *Cache) SearchRedis(match string) ([]string, error) {
+	return c.Redis.ScanAll(match)
+}
+
 func (c *Cache) DeleteKeyMatch(match string) (int, error) {
 	return c.Redis.DeleteKeyMatchFn(match, c.del)
 }
