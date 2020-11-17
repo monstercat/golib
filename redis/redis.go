@@ -175,7 +175,41 @@ func (r *Redis) DeleteKeyMatch(match string) (int, error) {
 	return r.DeleteKeyMatchFn(match, nil)
 }
 
+func (r *Redis) ScanAll(match string) ([]string, error) {
+	allKeys := make([]string, 0, 100)
+	var cursor int
+	fn := func() error {
+		var keys []string
+		var err error
+		keys, cursor, err = r.Scan(cursor, match)
+		if err != nil {
+			return err
+		}
+		allKeys = append(allKeys, keys...)
+		return nil
+	}
+
+	err := fn()
+	for cursor != 0 && err == nil {
+		err = fn()
+	}
+	return allKeys, err
+}
+
+type DeleteErrors struct {
+	Errors map[string]error
+}
+
+func (e *DeleteErrors) Error() string {
+	return fmt.Sprintf("Could not delete all keys")
+}
+func (e *DeleteErrors) Add(key string, err error) {
+	e.Errors[key] = err
+}
+
 func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) {
+	delErrs := &DeleteErrors{}
+
 	var cursor, count int
 	fn := func() error {
 		var keys []string
@@ -186,8 +220,9 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 		}
 		for _, key := range keys {
 			count++
-			r.Del(key)
-			if keyFn != nil {
+			if err := r.Del(key); err != nil {
+				delErrs.Add(key, err)
+			} else if keyFn != nil {
 				keyFn(key)
 			}
 		}
@@ -197,6 +232,13 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 	err := fn()
 	for cursor != 0 && err == nil {
 		err = fn()
+	}
+	if err == nil && len(delErrs.Errors) > 0 {
+		err = delErrs
+	}
+	if err == nil {
+		// Ensure that the [type] of the [nil] error variables is <nil,nil> and not <error,nil>
+		return count, nil
 	}
 	return count, err
 }
