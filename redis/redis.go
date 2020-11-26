@@ -219,6 +219,10 @@ func (e *DeleteErrors) Add(key string, err error) {
 func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) {
 	delErrs := &DeleteErrors{}
 
+	// NOTE: consider using a goroutine with a channel so that the Del and Scan operations can be performed in
+	// parallel. We need to make sure that the gorouting can exit properly, and not have bad race conditions.
+	//
+	// Also, consider whether deleting at the same time as scanning changes the scan results. 
 	var count int
 	_, err := r.ScanIterate(match, 0, func(keys []string) bool {
 		for _, key := range keys {
