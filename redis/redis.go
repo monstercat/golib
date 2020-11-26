@@ -179,7 +179,7 @@ func (r *Redis) DeleteKeyMatch(match string) (int, error) {
 // It will return the found keys at that limit.
 func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, error) {
 	allKeys := make([]string, 0, 100)
-	cursor, err := r.scan(match, cursor, func(keys []string) bool {
+	cursor, err := r.ScanIterate(match, cursor, func(keys []string) bool {
 		allKeys = append(allKeys, keys...)
 		return len(allKeys) >= limit
 	})
@@ -189,22 +189,20 @@ func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, err
 	return allKeys, cursor, nil
 }
 
-func (r *Redis) scan(match string, cursor int, consumer func([]string) bool ) (int, error) {
-	fn := func() (bool, error) {
-		var keys []string
-		var err error
+func (r *Redis) ScanIterate(match string, cursor int, consumer func([]string) bool ) (int, error) {
+	var keys []string
+	var err error
+
+	for {
 		keys, cursor, err = r.Scan(cursor, match)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
-		return consumer(keys), nil
+		if consumer(keys) {
+			break
+		}
 	}
-
-	end, err := fn()
-	for cursor != 0 && err == nil && !end {
-		end, err = fn()
-	}
-	return cursor, err
+	return cursor, nil
 }
 
 type DeleteErrors struct {
@@ -222,7 +220,7 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 	delErrs := &DeleteErrors{}
 
 	var count int
-	_, err := r.scan(match, 0, func(keys []string) bool {
+	_, err := r.ScanIterate(match, 0, func(keys []string) bool {
 		for _, key := range keys {
 			if err := r.Del(key); err != nil {
 				delErrs.Add(key, err)
@@ -233,12 +231,11 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 		}
 		return false
 	})
-	if err == nil && len(delErrs.Errors) > 0 {
-		err = delErrs
+	if err != nil {
+		return count, err
 	}
-	if err == nil {
-		// Ensure that the [type] of the [nil] error variables is <nil,nil> and not <error,nil>
-		return count, nil
+	if len(delErrs.Errors) > 0 {
+		return count, delErrs
 	}
-	return count, err
+	return count, nil
 }
