@@ -175,9 +175,10 @@ func (r *Redis) DeleteKeyMatch(match string) (int, error) {
 	return r.DeleteKeyMatchFn(match, nil)
 }
 
-func (r *Redis) ScanAll(match string) ([]string, error) {
+// ScanAtLeast will scan until the first cursor that the limit is reached.
+// It will return the found keys at that limit.
+func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, error) {
 	allKeys := make([]string, 0, 100)
-	var cursor int
 	fn := func() error {
 		var keys []string
 		var err error
@@ -190,10 +191,10 @@ func (r *Redis) ScanAll(match string) ([]string, error) {
 	}
 
 	err := fn()
-	for cursor != 0 && err == nil {
+	for cursor != 0 && err == nil && len(allKeys) < limit {
 		err = fn()
 	}
-	return allKeys, err
+	return allKeys, cursor, err
 }
 
 type DeleteErrors struct {
