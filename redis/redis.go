@@ -179,22 +179,32 @@ func (r *Redis) DeleteKeyMatch(match string) (int, error) {
 // It will return the found keys at that limit.
 func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, error) {
 	allKeys := make([]string, 0, 100)
-	fn := func() error {
+	cursor, err := r.scan(match, cursor, func(keys []string) bool {
+		allKeys = append(allKeys, keys...)
+		return len(allKeys) >= limit
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return allKeys, cursor, nil
+}
+
+func (r *Redis) scan(match string, cursor int, consumer func([]string) bool ) (int, error) {
+	fn := func() (bool, error) {
 		var keys []string
 		var err error
 		keys, cursor, err = r.Scan(cursor, match)
 		if err != nil {
-			return err
+			return false, err
 		}
-		allKeys = append(allKeys, keys...)
-		return nil
+		return consumer(keys), nil
 	}
 
-	err := fn()
-	for cursor != 0 && err == nil && len(allKeys) < limit {
-		err = fn()
+	end, err := fn()
+	for cursor != 0 && err == nil && !end {
+		end, err = fn()
 	}
-	return allKeys, cursor, err
+	return cursor, err
 }
 
 type DeleteErrors struct {
@@ -211,29 +221,18 @@ func (e *DeleteErrors) Add(key string, err error) {
 func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) {
 	delErrs := &DeleteErrors{}
 
-	var cursor, count int
-	fn := func() error {
-		var keys []string
-		var err error
-		keys, cursor, err = r.Scan(cursor, match)
-		if err != nil {
-			return err
-		}
+	var count int
+	_, err := r.scan(match, 0, func(keys []string) bool {
 		for _, key := range keys {
-			count++
 			if err := r.Del(key); err != nil {
 				delErrs.Add(key, err)
 			} else if keyFn != nil {
+				count++
 				keyFn(key)
 			}
 		}
-		return nil
-	}
-
-	err := fn()
-	for cursor != 0 && err == nil {
-		err = fn()
-	}
+		return false
+	})
 	if err == nil && len(delErrs.Errors) > 0 {
 		err = delErrs
 	}
