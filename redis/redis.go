@@ -22,11 +22,6 @@ const (
 type Redis struct {
 	ConnURL string
 	Pool    *gore.Pool
-
-	// The IterationLimit denotes the max number of times an iteration will be performed with a null-value.
-	// For example, in the case of ScanAtLeast, this will be the # of zero-length returns in a row. If not set, the
-	// DefaultIterationLimit will be used.
-	IterationLimit int
 }
 
 // Creates a new connection via URL string and authenticates it for you
@@ -45,9 +40,8 @@ func NewRedis(connURL string) (*Redis, error) {
 		return nil, err
 	}
 	return &Redis{
-		Pool:           pool,
-		ConnURL:        connURL,
-		IterationLimit: DefaultIterationLimit,
+		Pool:    pool,
+		ConnURL: connURL,
 	}, err
 }
 
@@ -185,25 +179,43 @@ func (r *Redis) DeleteKeyMatch(match string) (int, error) {
 	return r.DeleteKeyMatchFn(match, nil)
 }
 
-// ScanAtLeast will scan until the first cursor that the limit is reached.
-// It will return the found keys at that limit.
-func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, error) {
-	var emptyCalls int
-
+func (r *Redis) scan(match string, cursor int, end func([]string) bool) ([]string, int, error) {
 	allKeys := make([]string, 0, 100)
 	cursor, err := r.ScanIterate(match, cursor, func(keys []string) bool {
-		if len(keys) > 0 {
-			emptyCalls = 0
-			allKeys = append(allKeys, keys...)
-		} else {
-			emptyCalls++
-		}
-		return emptyCalls >= r.IterationLimit || len(allKeys) >= limit
+		allKeys = append(allKeys, keys...)
+		return end(allKeys)
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	return allKeys, cursor, nil
+}
+
+// ScanAtLeast will scan until the first cursor that the limit is reached.
+// It will return the found keys at that limit.
+func (r *Redis) ScanAtLeast(match string, cursor, limit int) ([]string, int, error) {
+	return r.scan(match, cursor, func(allKeys []string) bool {
+		return len(allKeys) >= limit
+	})
+}
+
+// ScanAtLeastWithMaxIter tries to scan at least a certain amount of records, but will stop with the max number
+// of empty scans reaches a certain point.
+func (r *Redis) ScanAtLeastWithMaxIter(match string, cursor, limit int, maxIter int) ([]string, int, error) {
+	if maxIter == 0 {
+		return r.ScanAtLeast(match, cursor, limit)
+	}
+	var emptyCalls, lastKeyCount int
+	return r.scan(match, cursor, func(allKeys []string) bool {
+		l := len(allKeys)
+		if lastKeyCount == l {
+			emptyCalls++
+		}else {
+			emptyCalls = 0
+			lastKeyCount = l
+		}
+		return emptyCalls >= maxIter || l >= limit
+	})
 }
 
 func (r *Redis) ScanIterate(match string, cursor int, consumer func([]string) bool) (int, error) {
@@ -241,13 +253,7 @@ func (r *Redis) DeleteKeyMatchFn(match string, keyFn func(string)) (int, error) 
 	//
 	// Also, consider whether deleting at the same time as scanning changes the scan results. 
 	var count int
-	var emptyCalls int
 	_, err := r.ScanIterate(match, 0, func(keys []string) bool {
-		if len(keys) == 0 {
-			emptyCalls++
-			return emptyCalls >= r.IterationLimit
-		}
-		emptyCalls = 0
 		for _, key := range keys {
 			if err := r.Del(key); err != nil {
 				delErrs.Add(key, err)

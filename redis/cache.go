@@ -124,6 +124,10 @@ func (c *Cache) SearchRedis(match string, cursor, limit int) ([]string, int, err
 	return c.Redis.ScanAtLeast(match, cursor, limit)
 }
 
+func (c *Cache) SearchRedisWithMaxIter(match string, cursor, limit int, maxIter int) ([]string, int, error) {
+	return c.Redis.ScanAtLeastWithMaxIter(match, cursor, limit, maxIter)
+}
+
 func (c *Cache) DeleteKeyMatch(match string) (int, error) {
 	return c.Redis.DeleteKeyMatchFn(match, c.del)
 }
