@@ -2,6 +2,7 @@ package pgUtils
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 
@@ -35,7 +36,15 @@ type SearchOperatorConfigStringLike struct {
 }
 
 func (c SearchOperatorConfigStringLike) Sqlizer(o operator.Operator, prefix string) squirrel.Sqlizer {
-	return squirrel.Expr(fmt.Sprintf("%s%s%s ILIKE ?", prefix, c.Field, doNot(o)), "%"+o.Value+"%")
+	// Escape _
+	parts := strings.Split(o.Value, "_")
+	value := strings.Join(parts, "\\_")
+
+	// Escape the %
+	parts = strings.Split(value, "%")
+	value = strings.Join(parts, "\\%")
+
+	return squirrel.Expr(fmt.Sprintf("%s%s%s ILIKE ?", prefix, c.Field, doNot(o)), "%"+value+"%")
 }
 func (c SearchOperatorConfigStringLike) Apply(os, rem []operator.Operator, a *Accumulator, prefix string) {
 	fn := func(o operator.Operator) squirrel.Sqlizer {
