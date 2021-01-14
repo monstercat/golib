@@ -2,6 +2,12 @@ package pgUtils
 
 import "github.com/lib/pq"
 
+const (
+	ErrCodeConflict   pq.ErrorCode = "23503"
+	ErrCodeIncomplete pq.ErrorCode = "22P02"
+	ErrCodeDuplicate  pq.ErrorCode = "23505"
+)
+
 type ErrorConfig interface {
 	Test(e *pq.Error) bool
 }
@@ -10,6 +16,12 @@ type MatchesConstraint string
 
 func (c MatchesConstraint) Test(e *pq.Error) bool {
 	return e.Constraint == string(c)
+}
+
+type MatchesCode pq.ErrorCode
+
+func (c MatchesCode) Test(e *pq.Error) bool {
+	return e.Code == pq.ErrorCode(c)
 }
 
 // Transforms the error coming in *if* it is a PG error, based on the
