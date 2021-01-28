@@ -64,6 +64,9 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 	case pgnull.NullInt:
 		isZero = !dt.Valid || dt.Int64 == 0
 		checked = true
+	case pgnull.NullFloat:
+		isZero = !dt.Valid || dt.Float64 == 0
+		checked = true
 	case sql.NullInt32:
 		isZero = !dt.Valid || dt.Int32 == 0
 		checked = true
