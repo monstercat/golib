@@ -67,6 +67,33 @@ func (s *Service) Init(id, secret string) error {
 	return nil
 }
 
+func (s *Service) Head(filepath string) (*s3.HeadObjectOutput, bool, error){
+	obj, err := s.Client.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(filepath),
+	})
+	if err == nil {
+		return obj, true, nil
+	}
+	aerr, ok := err.(awserr.Error)
+	if !ok {
+		return nil, false, err
+	}
+
+	if aerr.Code() == "NotFound" {
+		return nil, false, nil
+	}
+	return nil, false, err
+}
+
+func (s *Service) SignedUrl(filename string, tm time.Duration, config *SignedUrlConfig) (string, error) {
+	req, _ := s.Client.GetObjectRequest(config.GetObjectInput(
+		s.Bucket,
+		filename,
+	))
+	return req.Presign(tm)
+}
+
 // Checks if the file exists
 func (s *Service) Exists(filepath string) (bool, error) {
 	_, err := s.Client.HeadObject(&s3.HeadObjectInput{
@@ -82,6 +109,21 @@ func (s *Service) Exists(filepath string) (bool, error) {
 		return false, err
 	}
 	return false, nil
+}
+
+func (s *Service) PutSimply(filepath string, r io.Reader) error {
+	ch := s.putSimply(filepath, r)
+	select {
+	case <-time.After(s.Timeout):
+		return ErrTimeout
+	case status := <-ch:
+		switch status.Code {
+		case data.UploadStatusCodeError:
+			return status.Error
+		default:
+			return nil
+		}
+	}
 }
 
 // Put here is generally only used if you do not care about progress or status updates as it hides
