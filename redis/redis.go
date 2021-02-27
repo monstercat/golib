@@ -221,12 +221,18 @@ func (r *Redis) ScanAtLeastWithMaxIter(match string, cursor, limit int, maxIter 
 func (r *Redis) ScanIterate(match string, cursor int, consumer func([]string) bool) (int, error) {
 	var keys []string
 	var err error
+	var newCursor int
 
 	for {
-		keys, cursor, err = r.Scan(cursor, match)
+		keys, newCursor, err = r.Scan(cursor, match)
 		if err != nil {
 			return 0, err
 		}
+		// If cursor is the same, break.
+		if newCursor == cursor {
+			break
+		}
+		cursor = newCursor
 		if consumer(keys) {
 			break
 		}
