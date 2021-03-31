@@ -47,7 +47,7 @@ func (o *Operator) Has(m Modifier) bool {
 	if o.Modifiers == nil || len(o.Modifiers) == 0 {
 		return false
 	}
-	for _, mod := range Modifiers {
+	for _, mod := range o.Modifiers {
 		if m == mod {
 			return true
 		}
