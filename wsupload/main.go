@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/monstercat/websocket"
 )
 
 var (

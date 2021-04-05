@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
+	"github.com/monstercat/websocket"
+	"github.com/monstercat/websocket/wsjson"
 )
 
 var (
@@ -93,15 +93,9 @@ func startWebsocketServer() *httptest.Server {
 			FS:      service,
 			Timeout: 15 * time.Second,
 		}
-
-		ch := make(chan error)
-		go func() {
-			for err := range ch {
-				log.Print(err)
-			}
-		}()
-		handler.Handle(ch)
-
+		if err := handler.Handle(); err != nil {
+			log.Print(err)
+		}
 	}))
 }
 
