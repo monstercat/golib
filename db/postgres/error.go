@@ -18,6 +18,12 @@ func (c MatchesConstraint) Test(e *pq.Error) bool {
 	return e.Constraint == string(c)
 }
 
+type MatchesRoutine string
+
+func (c MatchesRoutine) Test(e *pq.Error) bool {
+	return e.Routine == string(c)
+}
+
 type MatchesCode pq.ErrorCode
 
 func (c MatchesCode) Test(e *pq.Error) bool {
