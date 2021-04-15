@@ -11,8 +11,9 @@ import (
 func TestTransformError(t *testing.T) {
 
 	m := map[ErrorConfig]error{
-		MatchesConstraint("uniq_123"): errors.New("unique_123"),
-		MatchesConstraint("help_456"): errors.New("help_456"),
+		MatchesConstraint("uniq_123"):  errors.New("unique_123"),
+		MatchesConstraint("help_456"):  errors.New("help_456"),
+		MatchesRoutine("some_routine"): errors.New("some_routine"),
 	}
 
 	if TransformError(nil, m) != nil {
@@ -29,6 +30,10 @@ func TestTransformError(t *testing.T) {
 		case MatchesConstraint:
 			perr = &pq.Error{
 				Constraint: string(v),
+			}
+		case MatchesRoutine:
+			perr = &pq.Error{
+				Routine: string(v),
 			}
 		}
 		if perr == nil {
