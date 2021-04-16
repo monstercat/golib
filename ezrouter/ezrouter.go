@@ -101,14 +101,13 @@ func (r *PlaceholderRoute) GetPattern() string {
 
 // You should call this method before hand so that you don't run into silent Match errors.
 func (r *PlaceholderRoute) compile() error {
-	// TODO check only for legal characters at template \w \d - : /
 	var err error
-	re, err := regexp.Compile("(:[\\w]+)")
+	re, err := regexp.Compile("(:[\\w\\d-_]+)")
 	if err != nil {
 		return err
 	}
 	placeholders := re.FindAllString(r.Pattern, -1)
-
+	r.placeholders = []string{}
 	str := r.Pattern
 	for _, placeholder := range placeholders {
 		str = strings.Replace(str, placeholder, "([\\w\\d-]+)", 1)
