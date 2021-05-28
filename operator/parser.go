@@ -4,6 +4,12 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	stringutil "github.com/monstercat/golib/string"
+)
+
+var (
+	ValidOperatorRegexp = regexp.MustCompile("^[A-z\\-]+$")
 )
 
 type Parser struct {
@@ -130,6 +136,45 @@ func (p *Parser) FindKeyOrValue(str string) (key string, value string, n int) {
 	}
 
 	return
+}
+
+func (p *Parser) RemoveOperatorsFromString(str string, operators ...string) string {
+	validOperators := make([]string, 0, len(operators))
+	for _, o := range operators {
+		if ValidOperatorRegexp.MatchString(o) {
+			validOperators = append(validOperators, o)
+		}
+	}
+	if len(validOperators) == 0 {
+		return str
+	}
+
+	var res string
+	for i := 0; i < len(str); i++ {
+		l := len(res)
+
+		// Ignore spaces
+		if str[i] == ' ' {
+			if l > 0 && res[l-1] != ' ' {
+				res = res + " "
+			}
+			continue
+		}
+
+		search := i
+		if p.MatchModifier(str[i]) != nil {
+			search++
+		}
+		key, _, n := p.FindKeyOrValue(str[i:])
+		if !stringutil.StringInList(validOperators, key) {
+			res = res + str[i:search+n]
+		}
+
+		// as the for loop will continue to increment i we need to -1
+		i = search + n - 1
+		continue
+	}
+	return strings.TrimSpace(res)
 }
 
 func OperatorExtractComparator(v string) (string, string) {

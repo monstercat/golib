@@ -84,4 +84,3 @@ type SearchOperatorConfigBase struct {
 func (c SearchOperatorConfigBase) GetKeys() []string {
 	return c.Keys
 }
-

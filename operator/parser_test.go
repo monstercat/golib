@@ -3,8 +3,6 @@ package operator
 import (
 	"regexp"
 	"testing"
-
-	stringutil "github.com/monstercat/golib/string"
 )
 
 func TestParserConfig_Regexp(t *testing.T) {
@@ -47,6 +45,51 @@ func TestParserConfig_Regexp(t *testing.T) {
 		_, err := regexp.Compile(s)
 		if err != nil {
 			t.Errorf("[%d] did not compile: %s", i, err)
+		}
+	}
+}
+
+func TestParser_RemoveOperatorsFromString(t *testing.T) {
+	parser, err := NewParser(ParserConfig{
+		StringStart:  "\"",
+		StringEnd:    "\"",
+		KeyDelimiter: ":",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		Remove []string
+		Start  string
+		Result string
+	}{
+		{
+			Remove: []string{"state"},
+			Start:  "state:12345",
+			Result: "",
+		},
+		{
+			Remove: []string{"state"},
+			Start:  "state:12345 title:12345 43939",
+			Result: "title:12345 43939",
+		},
+		{
+			Remove: []string{"state"},
+			Start:  "title:12345 state:12345 43939",
+			Result: "title:12345 43939",
+		},
+		{
+			Remove: []string{"state", "title"},
+			Start:  "title:12345 state:12345 43939",
+			Result: "43939",
+		},
+	}
+
+	for _, test := range tests {
+		res := parser.RemoveOperatorsFromString(test.Start, test.Remove...)
+		if res != test.Result {
+			t.Errorf("For `%s`, removing %#v... got `%s`, expected `%s`", test.Start, test.Remove, res, test.Result)
 		}
 	}
 }
@@ -173,8 +216,10 @@ func TestParser_Parse(t *testing.T) {
 						Value: "123454-fjgie",
 					}},
 				},
-				Remainders: []string{
-					"123456",
+				Remainders: []Operator{
+					{
+						Value: "123456",
+					},
 				},
 			},
 		},
@@ -186,8 +231,15 @@ func TestParser_Parse(t *testing.T) {
 			t.Errorf("[%d] remainders not equal length. Got %d, want %d", i, len(ops.Remainders), len(test.ops.Remainders))
 		}
 		for _, r := range test.ops.Remainders {
-			if !stringutil.StringInList(ops.Remainders, r) {
-				t.Errorf("[%d] expecting remainder %s, but cannot find in list", i, r)
+			var found bool
+			for _, rem := range ops.Remainders {
+				if r.Value == rem.Value {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("[%d] expecting remainder %s, but cannot find in list", i, r.Value)
 			}
 		}
 		for key, val := range ops.Values {
