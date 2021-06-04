@@ -110,7 +110,7 @@ func (r *PlaceholderRoute) compile() error {
 	r.placeholders = []string{}
 	str := r.Pattern
 	for _, placeholder := range placeholders {
-		str = strings.Replace(str, placeholder, "([\\w\\d-]+)", 1)
+		str = strings.Replace(str, placeholder, "([\\w\\d-.]+)", 1)
 		r.placeholders = append(r.placeholders, placeholder[1:])
 	}
 
