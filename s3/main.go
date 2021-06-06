@@ -120,8 +120,9 @@ func (s *S3Baked) MkURL(key string) string {
 }
 
 type SignedUrlConfig struct {
-	Download bool
-	Filename string
+	Download    bool
+	Filename    string
+	ContentType string
 }
 
 func (c SignedUrlConfig) GetDisposition() string {
@@ -134,11 +135,19 @@ func (c SignedUrlConfig) GetDisposition() string {
 	return fmt.Sprintf("attachment; filename=\"%s\"", c.Filename)
 }
 
+func (c SignedUrlConfig) GetContentType() string {
+	if c.ContentType == "" {
+		return "binary/octet-stream"
+	}
+	return c.ContentType
+}
+
 func (c SignedUrlConfig) GetObjectInput(bucket, key string) *s3.GetObjectInput {
 	return &s3.GetObjectInput{
 		Bucket:                     aws.String(bucket),
 		Key:                        aws.String(key),
 		ResponseContentDisposition: aws.String(c.GetDisposition()),
+		ResponseContentType:        aws.String(c.GetContentType()),
 	}
 }
 
