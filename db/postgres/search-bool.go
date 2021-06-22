@@ -2,6 +2,7 @@ package pgUtils
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 
@@ -25,8 +26,8 @@ func parseBool(o string) bool {
 	if o == "" {
 		return false
 	}
-	switch o[0] {
-	case 't', 'T', '1':
+	switch strings.ToLower(o) {
+	case "t", "true", "1":
 		return true
 	}
 	return false
