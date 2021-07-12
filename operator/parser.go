@@ -171,7 +171,9 @@ func (p *Parser) RemoveOperatorsFromString(str string, operators ...string) stri
 		}
 
 		// as the for loop will continue to increment i we need to -1
-		i = search + n - 1
+		if search+n > i {
+			i = search + n - 1
+		}
 		continue
 	}
 	return strings.TrimSpace(res)
