@@ -50,6 +50,30 @@ func NewParser(config ParserConfig) (*Parser, error) {
 	}, nil
 }
 
+func (p *Parser) ParseMap(m map[string][]string) Operators {
+	operators := Operators{
+		Values:     make(map[string][]Operator),
+		Remainders: make([]Operator, 0, 10),
+	}
+	for k, vv := range m {
+		if len(vv) == 0 {
+			continue
+		}
+		currModifiers := make([]Modifier, 0, len(p.Modifiers))
+		if mod := p.MatchModifier(k[0]); mod != nil {
+			currModifiers = append(currModifiers, *mod)
+			k = k[1:]
+		}
+		for _, v := range vv {
+			operators.AddOperator(k, Operator{
+				Value: v,
+				Modifiers: currModifiers,
+			})
+		}
+	}
+	return operators
+}
+
 func (p *Parser) Parse(str string) Operators {
 	str = strings.TrimSpace(str)
 
