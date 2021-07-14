@@ -40,6 +40,9 @@ func (a *Accumulator) GetCondition() squirrel.Sqlizer {
 	if len(a.remainders) > 0 {
 		a.or = append(a.or, a.remainders)
 	}
+	if len(a.or) == 0 {
+		return nil
+	}
 	return a.or
 }
 
@@ -47,7 +50,9 @@ func ApplyOperators(query *squirrel.SelectBuilder, config []ISearchOperatorConfi
 	a := &Accumulator{}
 	for _, c := range config {
 		os := ops.Get(c.GetKeys()...)
-		c.Apply(os, ops.Remainders, a, prefix)
+		if os != nil {
+			c.Apply(os, ops.Remainders, a, prefix)
+		}
 	}
 	a.ApplyToQuery(query)
 }
