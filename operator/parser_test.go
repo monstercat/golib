@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"net/url"
 	"regexp"
 	"testing"
 )
@@ -227,6 +228,104 @@ func TestParser_Parse(t *testing.T) {
 
 	for i, test := range tests {
 		ops := p.Parse(test.s)
+		if len(ops.Remainders) != len(test.ops.Remainders) {
+			t.Errorf("[%d] remainders not equal length. Got %d, want %d", i, len(ops.Remainders), len(test.ops.Remainders))
+		}
+		for _, r := range test.ops.Remainders {
+			var found bool
+			for _, rem := range ops.Remainders {
+				if r.Value == rem.Value {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("[%d] expecting remainder %s, but cannot find in list", i, r.Value)
+			}
+		}
+		for key, val := range ops.Values {
+			testVal, ok := test.ops.Values[key]
+			if !ok {
+				t.Errorf("[%d] expecting an operator value at key %s; but there is none", i, key)
+				continue
+			}
+			if len(val) != len(testVal) {
+				t.Errorf("[%d] expecting %d operators for key %s; but got %d", i, len(testVal), key, len(val))
+				continue
+			}
+			for j, v := range val {
+				if v.Value != testVal[j].Value {
+					t.Errorf("[%d] expecting operator value %s for key %s at idx %d; but got %s", i, testVal[j].Value, key, j, v.Value)
+				}
+				if len(v.Modifiers) != len(testVal[j].Modifiers) {
+					t.Errorf("[%d] expecting %d modifiers but got %d for key %s at idx %d", i, len(testVal[j].Modifiers), len(v.Modifiers), key, j)
+				}
+				for k, m := range v.Modifiers {
+					if m != testVal[j].Modifiers[k] {
+						t.Errorf("[%d] Expecting modifier %v but got %v for key %s at idx %d", i, testVal[j].Modifiers[k], m, key, j)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestParser_ParseMap(t *testing.T) {
+	p, err := NewParser(ParserConfig{
+		StringStart:  "\"",
+		StringEnd:    "\"",
+		KeyDelimiter: ":",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		s   url.Values
+		ops Operators
+	}{
+		{
+			s: url.Values{
+				"tag": []string{"123456"},
+				"tags": []string{"123454-fjgie"},
+			},
+			ops: Operators{
+				Values: map[string][]Operator{
+					"tag": {{
+						Value: "123456",
+					}},
+					"tags": {{
+						Value: "123454-fjgie",
+					}},
+				},
+			},
+		},
+		{
+			s: url.Values{
+				"tag": []string{"123456"},
+				"tags": []string{"123454-fjgie"},
+				"!tag": []string{"54949"},
+			},
+			ops: Operators{
+				Values: map[string][]Operator{
+					"tag": {
+						{
+							Value: "123456",
+						},
+						{
+							Value:     "54949",
+							Modifiers: []Modifier{ModifierNot},
+						},
+					},
+					"tags": {{
+						Value: "123454-fjgie",
+					}},
+				},
+			},
+		},
+	}
+	for i, test := range tests {
+		ops := p.ParseMap(test.s)
 		if len(ops.Remainders) != len(test.ops.Remainders) {
 			t.Errorf("[%d] remainders not equal length. Got %d, want %d", i, len(ops.Remainders), len(test.ops.Remainders))
 		}
