@@ -50,9 +50,7 @@ func ApplyOperators(query *squirrel.SelectBuilder, config []ISearchOperatorConfi
 	a := &Accumulator{}
 	for _, c := range config {
 		os := ops.Get(c.GetKeys()...)
-		if os != nil {
-			c.Apply(os, ops.Remainders, a, prefix)
-		}
+		c.Apply(os, ops.Remainders, a, prefix)
 	}
 	a.ApplyToQuery(query)
 }
