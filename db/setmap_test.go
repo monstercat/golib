@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+
 	"github.com/monstercat/pgnull"
 )
 
@@ -127,4 +128,35 @@ func boolToModifier(b bool) string {
 		return "not "
 	}
 	return ""
+}
+
+func TestSetMapEmbeddedStruct(t *testing.T) {
+	type A struct {
+		A int
+		B int
+	}
+	type B struct {
+		A
+		C int
+	}
+
+	b := B {
+		A: A{
+			A: 1,
+			B: 2,
+		},
+		C: 3,
+	}
+
+	a := SetMap(&b, false)
+
+	if aa, ok := a["a"]; !ok || aa != 1 {
+		t.Errorf("Expecting a value `1` for a. Got %d", aa)
+	}
+	if bb, ok := a["b"]; !ok || bb != 2 {
+		t.Errorf("Expecting a value `2` for b. Got %d", bb)
+	}
+	if cc, ok := a["c"]; !ok || cc != 3 {
+		t.Errorf("Expecting a value `3` for c. Got %d", cc)
+	}
 }
