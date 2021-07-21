@@ -63,6 +63,10 @@ func extractSetMapTags(isInsert bool, it SetMapIterator) StructFieldIterator {
 		data, isZero, checked := GetData(v)
 		if !checked {
 			if f.Type.Kind() == reflect.Struct {
+				if f.Anonymous {
+					vv := v.Interface()
+					IteratePgFields(&vv, isInsert, it)
+				}
 				// This function doesn't handle structs other
 				// than the ones specifically defined above.
 				return
