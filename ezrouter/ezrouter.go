@@ -8,10 +8,11 @@ import (
 
 type Route interface {
 	Match(r *http.Request) *RouteMatches
-
 	GetHandler() func(interface{})
+}
 
-	// Use the following to read the pattern or update it. For example if you want to prefix or suffix things.
+type PatternRoute interface {
+	Route
 	GetPattern() string
 	SetPattern(p string) error
 }
