@@ -49,6 +49,8 @@ func SetCoalescer(c Coalescer) {
 	CoalesceFromType = c
 }
 
+type SelectIterator func(name string, f reflect.StructField, t *SelectTags)
+
 type SelectTags struct {
 	Coalesce bool
 	Ignore   bool
@@ -122,11 +124,28 @@ func GetColumnsForSetExcl(set string, val interface{}, prefix string, filterFiel
 
 func getColumnsForSet(set string, val interface{}, prefix string, invert bool, filterFields ...string) []string {
 	m := make([]string, 0)
-	IterateStructFields(val, func(f reflect.StructField, v reflect.Value) {
+	IterateColumnNames(set, val, func(name string, f reflect.StructField, t *SelectTags){
+		m = append(m, t.Apply(name, prefix, f.Type))
+	}, invert, filterFields...)
+	return m
+}
+
+func IterateColumnNames(set string, val interface{}, it SelectIterator, invert bool, filterFields ...string) {
+	IterateStructFields(val, extractColumnName(set, it, invert, filterFields...))
+}
+
+func extractColumnName(set string, it SelectIterator, invert bool, filterFields...string ) StructFieldIterator {
+	return func(f reflect.StructField, v reflect.Value) {
 		t := &SelectTags{}
 		t.Parse(f.Tag.Get(SelectTagName))
 		t.ParseSets(f.Tag.Get(SelectSetTagName))
 		if t.Ignore {
+			return
+		}
+
+		if f.Anonymous {
+			vv := v.Interface()
+			IterateColumnNames(set, &vv, it, invert, filterFields...)
 			return
 		}
 
@@ -141,9 +160,8 @@ func getColumnsForSet(set string, val interface{}, prefix string, invert bool, f
 		if name == "" {
 			return
 		}
-		m = append(m, t.Apply(name, prefix, f.Type))
-	})
-	return m
+		it(name, f, t)
+	}
 }
 
 func GetColumnsByTag(val interface{}, prefix string, filterFields ...string) map[string]string {
