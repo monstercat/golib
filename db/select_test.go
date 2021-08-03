@@ -89,4 +89,3 @@ func TestGetColumnsByTag(t *testing.T) {
 	// Second time should get from cache!
 	testCols(GetColumnsByTag(&rp, ""))
 }
-
