@@ -1,4 +1,4 @@
-package stringutil
+package strutil
 
 func StringInList(xs []string, a string) bool {
 	for _, g := range xs {

@@ -1,4 +1,4 @@
-package pgUtils
+package pgutil
 
 import (
 	"database/sql/driver"

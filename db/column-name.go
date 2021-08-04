@@ -1,4 +1,4 @@
-package dbUtil
+package dbutil
 
 import (
 	"github.com/monstercat/golib/string"
@@ -12,7 +12,7 @@ func ColumnNameFromDbTag(f reflect.StructField) string {
 		return ""
 	}
 	if dbTag == "" {
-		return stringutil.CamelToSnakeCase(f.Name)
+		return strutil.CamelToSnakeCase(f.Name)
 	}
 
 	str :=  strings.Split(dbTag, ",")

@@ -1,4 +1,4 @@
-package dbUtil
+package dbutil
 
 import (
 	"reflect"

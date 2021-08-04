@@ -1,4 +1,4 @@
-package pgUtils
+package pgutil
 
 import (
 	"github.com/jmoiron/sqlx"
