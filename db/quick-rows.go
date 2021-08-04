@@ -1,4 +1,4 @@
-package dbUtil
+package dbutil
 
 import (
 	"github.com/Masterminds/squirrel"
