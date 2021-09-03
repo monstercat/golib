@@ -70,8 +70,12 @@ func GetTimeFromRow(row map[string]string, field string, line int, required bool
 }
 
 func GetCustomNullTimeFromRow(fmts []string, row map[string]string, field string, line int) (pgnull.NullTime, error) {
+	return GetCustomNullTimeFromRowInLocation(fmts, row, field, line, time.UTC)
+}
+
+func GetCustomNullTimeFromRowInLocation(fmts []string, row map[string]string, field string, line int, loc *time.Location) (pgnull.NullTime, error) {
 	v, err := GetFieldFromRow(row, field, line, false)
-	xv, err := ParseCsvStringToNullTime(fmts, v)
+	xv, err := ParseCsvStringToNullTimeInLocation(fmts, v, loc)
 	if err != nil {
 		return pgnull.NullTime{}, TransformCsvError(err, field, line)
 	}
@@ -82,11 +86,15 @@ func GetNullTimeFromRow(row map[string]string, field string, line int) (pgnull.N
 	return GetCustomNullTimeFromRow(defaultFormats, row, field, line)
 }
 
-func ParseCsvStringToTime(fmts []string, str string) (time.Time, error) {
+func GetNullTimeFromRowInLocation(row map[string]string, field string, line int, loc *time.Location) (pgnull.NullTime, error) {
+	return GetCustomNullTimeFromRowInLocation(defaultFormats, row, field, line, loc)
+}
+
+func ParseCsvStringToTimeInLocation(fmts []string, str string, loc *time.Location) (time.Time, error) {
 	var xv time.Time
 	var err error
 	for _, fmt := range fmts {
-		xv, err = time.Parse(fmt, str)
+		xv, err = time.ParseInLocation(fmt, str, loc)
 		if err == nil {
 			break
 		}
@@ -97,11 +105,19 @@ func ParseCsvStringToTime(fmts []string, str string) (time.Time, error) {
 	return xv, nil
 }
 
+func ParseCsvStringToTime(fmts []string, str string) (time.Time, error) {
+	return ParseCsvStringToTimeInLocation(fmts, str, time.UTC)
+}
+
 func ParseCsvStringToNullTime(fmts []string, str string) (pgnull.NullTime, error) {
+	return ParseCsvStringToNullTimeInLocation(fmts, str, time.UTC)
+}
+
+func ParseCsvStringToNullTimeInLocation(fmts []string, str string, loc *time.Location) (pgnull.NullTime, error) {
 	if str == "" {
 		return pgnull.NullTime{}, nil
 	}
-	date, err := ParseCsvStringToTime(fmts, str)
+	date, err := ParseCsvStringToTimeInLocation(fmts, str, loc)
 	if err != nil {
 		return pgnull.NullTime{}, err
 	}
