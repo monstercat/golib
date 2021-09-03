@@ -66,7 +66,7 @@ func (p *Parser) ParseMap(m map[string][]string) Operators {
 		}
 		for _, v := range vv {
 			operators.AddOperator(k, Operator{
-				Value: v,
+				Value:     v,
 				Modifiers: currModifiers,
 			})
 		}
