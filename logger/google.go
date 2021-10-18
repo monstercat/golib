@@ -21,7 +21,9 @@ type Google struct {
 	}
 }
 
-// NewGoogle returns a new Google logger using the provided client and name.
+// NewGoogle returns a new Google logger using the provided client and name. Note that this method creates a new
+// *logging.Logger which is expensive (as each *logging.Logger can store up to 1000 entries and 1 MB of data before
+// sending the logs and clearing its own cache).
 func NewGoogle(client *logging.Client, name string) *Google {
 	return &Google{
 		Logger: client.Logger(name),
