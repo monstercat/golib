@@ -39,7 +39,7 @@ type UploadStatus struct {
 type Service interface {
 	Exists(filepath string) (bool, error)
 	Get(filepath string) (io.ReadCloser, error)
-	Put(filepath, r io.Reader) error
+	Put(filepath string, r io.Reader) error
 
 	Delete(filepath string) error
 }
@@ -49,7 +49,7 @@ type HeadService interface {
 }
 
 type SignedUrlService interface {
-	SignedUrl(filepath string, cfg *SignedUrlConfig) (string, error)
+	SignedUrl(filepath string, tm time.Duration, cfg *SignedUrlConfig) (string, error)
 }
 
 type HeadInfo struct {
