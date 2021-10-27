@@ -86,8 +86,9 @@ func (s *Service) Head(filepath string) (*s3.HeadObjectOutput, bool, error){
 	return nil, false, err
 }
 
-func (s *Service) SignedUrl(filename string, tm time.Duration, config *SignedUrlConfig) (string, error) {
-	req, _ := s.Client.GetObjectRequest(config.GetObjectInput(
+func (s *Service) SignedUrl(filename string, tm time.Duration, config *data.SignedUrlConfig) (string, error) {
+	req, _ := s.Client.GetObjectRequest(GetObjectInputFromConfig(
+		config,
 		s.Bucket,
 		filename,
 	))
@@ -111,7 +112,7 @@ func (s *Service) Exists(filepath string) (bool, error) {
 	return false, nil
 }
 
-func (s *Service) PutSimply(filepath string, r io.Reader) error {
+func (s *Service) Put(filepath string, r io.Reader) error {
 	ch := s.putSimply(filepath, r)
 	select {
 	case <-time.After(s.Timeout):
@@ -128,7 +129,7 @@ func (s *Service) PutSimply(filepath string, r io.Reader) error {
 
 // Put here is generally only used if you do not care about progress or status updates as it hides
 // this information from the user. You only get the final error or non-error code.
-func (s *Service) Put(filepath string, filesize int, chunks int, r io.Reader) error {
+func (s *Service) Upload(filepath string, filesize int, chunks int, r io.Reader) error {
 	ch := s.PutWithStatus(filepath, filesize, chunks, r)
 	for {
 		select {

@@ -76,7 +76,7 @@ func TestStandardS3Services(t *testing.T) {
 	}
 	defer f.Close()
 
-	if err := service.Put(TestFilename1, TestFilesize1, 1, f); err != nil {
+	if err := service.Upload(TestFilename1, TestFilesize1, 1, f); err != nil {
 		t.Fatal(err)
 	}
 	exists, err := service.Exists(TestFilename1)

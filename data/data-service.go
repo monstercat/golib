@@ -3,11 +3,11 @@ package data
 import (
 	"errors"
 	"io"
+	"time"
 )
 
 var (
-	ErrUploadNotFound             = errors.New("upload not found")
-
+	ErrUploadNotFound = errors.New("upload not found")
 )
 
 type UploadStatusCode string
@@ -39,10 +39,23 @@ type UploadStatus struct {
 type Service interface {
 	Exists(filepath string) (bool, error)
 	Get(filepath string) (io.ReadCloser, error)
-	Download(filepath string, w io.WriterAt) error
-	Delete(filepath string) error
+	Put(filepath, r io.Reader) error
 
-	Put(filepath string, filesize int, chunks int, r io.Reader) error
+	Delete(filepath string) error
+}
+
+type HeadService interface {
+	Head(filepath string) (*HeadInfo, error)
+}
+
+type SignedUrlService interface {
+	SignedUrl(filepath string, cfg *SignedUrlConfig) (string, error)
+}
+
+type HeadInfo struct {
+	Exists        bool
+	LastModified  time.Time
+	ContentLength int64
 }
 
 type Upload interface {
@@ -50,10 +63,15 @@ type Upload interface {
 	GetUploaded() int
 }
 
-type ChunkService interface{
+type ChunkService interface {
 	Service
 	PutWithStatus(filepath string, filesize int, chunks int, r io.Reader) chan UploadStatus
 	ResumePutWithStatus(filepath string, offset int, r io.Reader) (chan UploadStatus, error)
 	GetIncompleteUpload(filepath string) Upload
 	GetChunkSize() int
+}
+
+type ParallelService interface {
+	Download(filepath string, w io.WriterAt) error
+	Upload(filepath string, filesize int, chunks int, r io.Reader) error
 }
