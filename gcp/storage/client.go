@@ -16,18 +16,17 @@ import (
 
 // Client wraps google's *storage.Client and implements the data.Service interface
 type Client struct {
-	creds              *credentialsFile
-	bucketName         string
-	expiry             time.Duration
+	creds      *credentialsFile
+	BucketName string
 
-	client *storage.Client
+	Client *storage.Client
 	Bucket *storage.BucketHandle
 }
 
-// NewClient creates a new GCP storage client.
+// NewClient creates a new GCP storage Client.
 func NewClient(creds []byte, bucket string) (*Client, error) {
 	c := &Client{
-		bucketName: bucket,
+		BucketName: bucket,
 	}
 	if err := c.decodeCreds(creds); err != nil {
 		return nil, err
@@ -38,7 +37,7 @@ func NewClient(creds []byte, bucket string) (*Client, error) {
 		return nil, err
 	}
 
-	c.client = client
+	c.Client = client
 	c.Bucket = client.Bucket(bucket)
 
 	// Check if the bucket exists. If not, return error.
@@ -48,12 +47,6 @@ func NewClient(creds []byte, bucket string) (*Client, error) {
 	}
 
 	return c, nil
-}
-
-// SetExpiry sets the expiry to be used for SignedUrls.
-func (c *Client) SetExpiry(dur time.Duration) *Client {
-	c.expiry = dur
-	return c
 }
 
 // credentialsFile is the unmarshalled representation of a credentials file.
@@ -84,12 +77,12 @@ func (c *Client) decodeCreds(creds []byte) error {
 	return nil
 }
 
-// Close closes the client connection
+// Close closes the Client connection
 func (c *Client) Close() error {
-	if c.client == nil {
+	if c.Client == nil {
 		return nil
 	}
-	return c.client.Close()
+	return c.Client.Close()
 }
 
 // Exists returns whether the filepath exists in the bucket.
@@ -134,15 +127,12 @@ func (c *Client) Put(filepath string, r io.Reader) error {
 	return err
 }
 
-func (c *Client) SignedUrl(filepath string, cfg *data.SignedUrlConfig) (string, error) {
-	if c.expiry == 0 {
-		c.expiry = time.Hour
-	}
-	str, err := storage.SignedURL(c.bucketName, filepath, &storage.SignedURLOptions{
+func (c *Client) SignedUrl(filepath string, tm time.Duration, cfg *data.SignedUrlConfig) (string, error) {
+	str, err := storage.SignedURL(c.BucketName, filepath, &storage.SignedURLOptions{
 		GoogleAccessID: c.creds.ClientEmail,
 		PrivateKey:     []byte(c.creds.PrivateKey),
 		Method:         http.MethodGet,
-		Expires:        time.Now().Add(c.expiry),
+		Expires:        time.Now().Add(tm),
 	})
 	if err != nil {
 		return "", err

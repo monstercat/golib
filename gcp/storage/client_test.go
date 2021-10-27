@@ -1,10 +1,14 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/url"
 	"testing"
+	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 
 	"github.com/monstercat/golib/data"
@@ -49,14 +53,15 @@ func createCreds() []byte {
 }
 
 func TestClient(t *testing.T) {
+	content := []byte("test file content")
 	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
 		InitialObjects: []fakestorage.Object{
 			{
 				ObjectAttrs: fakestorage.ObjectAttrs{
 					BucketName: "Test-Bucket",
-					Name: "test-file.txt",
+					Name:       "test-file.txt",
 				},
-				Content: []byte("test file content"),
+				Content: content,
 			},
 		},
 		Host: "127.0.0.1",
@@ -68,10 +73,10 @@ func TestClient(t *testing.T) {
 	defer server.Stop()
 
 	client := &Client{
-		bucketName: "Test-Bucket",
-		client: server.Client(),
+		BucketName: "Test-Bucket",
+		Client:     server.Client(),
 	}
-	client.Bucket = client.client.Bucket("Test-Bucket")
+	client.Bucket = client.Client.Bucket("Test-Bucket")
 
 	exists, err := client.Exists("test-file.txt")
 	if err != nil {
@@ -81,18 +86,72 @@ func TestClient(t *testing.T) {
 		t.Fatal("test-file.txt should exist")
 	}
 
+	// Test a file that does not exist.
+	head, err := client.Head("test-file.txts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head == nil {
+		t.Fatal("Head should not be nil")
+	}
+	if head.Exists {
+		t.Fatal("test-file.txts should not exist")
+	}
+
+	head, err = client.Head("test-file.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head == nil {
+		t.Fatal("Head should not be nil")
+	}
+	if !head.Exists {
+		t.Fatal("test-file.txt should exist")
+	}
+	if int(head.ContentLength) != len(content) {
+		t.Fatal("Content length invalid")
+	}
+
+	r, err := client.Get("test-file.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != string(content) {
+		t.Fatalf("Content is not the same. Got %s", b)
+	}
+
+	if err := client.Delete("test-file.txts"); err != storage.ErrObjectNotExist {
+		t.Fatalf("Expecting an 'object doesn't exist' error. Got %s", err)
+	}
+	if err := client.Delete("test-file.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Get("test-file.txt"); err != storage.ErrObjectNotExist {
+		t.Fatalf("Expect object doesn't exists error. Got %s", err)
+	}
+
+	if err := client.Put("test-file.txt", bytes.NewReader(content)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Get("test-file.txt"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestClient_SignedUrl(t *testing.T) {
 	creds := createCreds()
 	client := &Client{
-		bucketName: "bucket",
+		BucketName: "bucket",
 	}
 
 	if err := client.decodeCreds(creds); err != nil {
 		t.Fatal(err)
 	}
-	str, err := client.SignedUrl("test-file-path", &data.SignedUrlConfig{
+	str, err := client.SignedUrl("test-file-path", time.Hour, &data.SignedUrlConfig{
 		ContentType: "application/json",
 		Download:    true,
 		Filename:    "test-file-name",
@@ -117,7 +176,7 @@ func TestClient_SignedUrl(t *testing.T) {
 		t.Errorf("Content disposition invalid. Got %s", cd)
 	}
 
-	str, err = client.SignedUrl("test-file-path", &data.SignedUrlConfig{
+	str, err = client.SignedUrl("test-file-path", time.Hour, &data.SignedUrlConfig{
 		ContentType: "application/json",
 		Download:    false,
 	})
