@@ -9,14 +9,14 @@ import (
 	"path"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
+
+	"github.com/monstercat/golib/data"
 )
 
 // DEPRECATED: this file is deprecated. We should migrate to the newer S3 interface.
@@ -119,30 +119,8 @@ func (s *S3Baked) MkURL(key string) string {
 	return "s3://" + path.Join(s.DefaultBucket(), key)
 }
 
-type SignedUrlConfig struct {
-	Download    bool
-	Filename    string
-	ContentType string
-}
 
-func (c SignedUrlConfig) GetDisposition() string {
-	if !c.Download {
-		return "inline"
-	}
-	if c.Filename == "" {
-		return "attachment"
-	}
-	return fmt.Sprintf("attachment; filename=\"%s\"", c.Filename)
-}
-
-func (c SignedUrlConfig) GetContentType() string {
-	if c.ContentType == "" {
-		return "binary/octet-stream"
-	}
-	return c.ContentType
-}
-
-func (c SignedUrlConfig) GetObjectInput(bucket, key string) *s3.GetObjectInput {
+func GetObjectInputFromConfig(c *data.SignedUrlConfig, bucket, key string) *s3.GetObjectInput {
 	return &s3.GetObjectInput{
 		Bucket:                     aws.String(bucket),
 		Key:                        aws.String(key),
@@ -151,45 +129,10 @@ func (c SignedUrlConfig) GetObjectInput(bucket, key string) *s3.GetObjectInput {
 	}
 }
 
-func ExistsS3(info S3Info, key string) (bool, error) {
-	_, exists, err := ObjectExistsS3(info, key)
-	return exists, err
-}
 
-func ObjectExistsS3(info S3Info, key string) (*s3.HeadObjectOutput, bool, error) {
+func SignedUrl(info S3Info, key string, duration time.Duration, cfg *data.SignedUrlConfig) (string, error) {
 	sess := s3.New(info.GetSession())
-	obj, err := sess.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(info.DefaultBucket()),
-		Key:    aws.String(info.MkHashKey(key)),
-	})
-
-	if err == nil {
-		return obj, true, nil
-	}
-
-	aerr, ok := err.(awserr.Error)
-	if !ok {
-		return nil, false, err
-	}
-
-	if aerr.Code() == "NotFound" {
-		return nil, false, nil
-	}
-	return nil, false, err
-}
-
-func DeleteS3(info S3Info, key string) error {
-	sess := s3.New(info.GetSession())
-	_, err := sess.DeleteObject(&s3.DeleteObjectInput{
-		Bucket: aws.String(info.DefaultBucket()),
-		Key:    aws.String(key),
-	})
-	return err
-}
-
-func SignedUrl(info S3Info, key string, duration time.Duration, cfg *SignedUrlConfig) (string, error) {
-	sess := s3.New(info.GetSession())
-	req, _ := sess.GetObjectRequest(cfg.GetObjectInput(
+	req, _ := sess.GetObjectRequest(GetObjectInputFromConfig(cfg,
 		info.DefaultBucket(),
 		info.MkHashKey(key),
 	))

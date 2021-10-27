@@ -34,7 +34,7 @@ func (s *Service) Stream(filepath string, w io.Writer) error {
 	return s.download(filepath, sw, 1)
 }
 
-// Gets a file reader from Service
+// Get gets a file reader from Service
 func (s *Service) Get(filepath string) (io.ReadCloser, error) {
 	out, err := s.Client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(s.Bucket),
