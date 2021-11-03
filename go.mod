@@ -15,7 +15,7 @@ require (
 	github.com/keimoon/gore v0.0.0-20160317032603-1ac8b93b5fdb
 	github.com/lib/pq v1.10.3
 	github.com/monstercat/pgnull v0.0.0-20211008053451-c7be7177fe76
-	github.com/monstercat/websocket v0.0.0-00010101000000-000000000000
+	github.com/monstercat/websocket v0.0.0-20211027191942-c20559603674
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/tidwall/gjson v1.10.2
