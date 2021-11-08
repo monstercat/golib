@@ -41,6 +41,21 @@ func (l *MetricEntry) SetContext(context interface{}) {
 	l.Context = context
 }
 
+func (l *MetricEntry) GetContext() interface{} {
+	return l.Context
+}
+
+func (l *MetricEntry) GetLog() interface{} {
+	return map[string]interface{}{
+		"Type":        l.Type,
+		"Name":        l.Name,
+		"Namespace":   l.Namespace,
+		"Value":       l.Value,
+		"Description": l.Description,
+		"Unit":        l.Unit,
+	}
+}
+
 func (l *MetricEntry) SetDefault() {
 	l.Type = TypeMetric
 }
