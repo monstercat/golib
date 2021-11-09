@@ -13,3 +13,15 @@ func Index(xs []string, a string) int {
 	return -1
 
 }
+
+func IsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, aa := range a {
+		if aa != b[i] {
+			return false
+		}
+	}
+	return true
+}
