@@ -18,7 +18,7 @@ require (
 	github.com/monstercat/websocket v0.0.0-20211027191942-c20559603674
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
-	github.com/tidwall/gjson v1.10.2
+	github.com/tidwall/gjson v1.11.0
 	github.com/trubitsyn/go-zero-width v1.0.1
 	google.golang.org/api v0.59.0
 	google.golang.org/genproto v0.0.0-20211027162914-98a5263abeca
