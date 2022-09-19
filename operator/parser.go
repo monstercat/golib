@@ -50,15 +50,26 @@ func NewParser(config ParserConfig) (*Parser, error) {
 	}, nil
 }
 
+// ParseMap parses a map into operators. This can be used, for example, by passing the query string url.Values
+// as operators. In this implementation, any query string parameters that do not have a key are ignored. Thus, no
+// "remainders" will be returned.
 func (p *Parser) ParseMap(m map[string][]string) Operators {
 	operators := Operators{
 		Values:     make(map[string][]Operator),
 		Remainders: make([]Operator, 0, 10),
 	}
 	for k, vv := range m {
+		// If no values, we ignore.
 		if len(vv) == 0 {
 			continue
 		}
+		// In the case that k is empty string, we can ignore.
+		if len(k) == 0 {
+			continue
+		}
+
+		// Retrieve modifiers. Modifiers are defined currently as the first character of the key. However, this might
+		// need to change as there might be more than 1 modifier.
 		currModifiers := make([]Modifier, 0, len(p.Modifiers))
 		if mod := p.MatchModifier(k[0]); mod != nil {
 			currModifiers = append(currModifiers, *mod)
@@ -74,6 +85,7 @@ func (p *Parser) ParseMap(m map[string][]string) Operators {
 	return operators
 }
 
+// Parse parses a string into operators based on the regexp generated from the parser config.
 func (p *Parser) Parse(str string) Operators {
 	str = strings.TrimSpace(str)
 
