@@ -13,7 +13,7 @@ func NewBoolOperator(field string, keys ...string) SearchOperatorConfigBool {
 	return SearchOperatorConfigBool{
 		SearchOperatorConfigBase{
 			Field: field,
-			Keys: keys,
+			Keys:  keys,
 		},
 	}
 }
@@ -35,7 +35,11 @@ func parseBool(o string) bool {
 
 func (c SearchOperatorConfigBool) Apply(os, rem []operator.Operator, a *Accumulator, prefix string) {
 	loopOperators(os, a, func(o operator.Operator) squirrel.Sqlizer {
-		b := parseBool(o.Value)
+		if len(o.Values) == 0 {
+			return nil
+		}
+		val := o.Values[0]
+		b := parseBool(val)
 		if o.Has(operator.ModifierNot) {
 			b = !b
 		}
