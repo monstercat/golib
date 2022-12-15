@@ -15,7 +15,7 @@ type ISearchOperatorConfig interface {
 type Accumulator struct {
 	or         squirrel.Or
 	and        squirrel.And
-	remainders squirrel.Or
+	remainders squirrel.And
 }
 
 func (a *Accumulator) ApplyAnd(sql squirrel.Sqlizer) {
@@ -25,7 +25,7 @@ func (a *Accumulator) ApplyOr(sql squirrel.Sqlizer) {
 	a.or = append(a.or, sql)
 }
 func (a *Accumulator) ApplyRemainder(sql squirrel.Sqlizer) {
-	a.remainders = append(a.remainders, sql)
+	a.and = append(a.and, sql)
 }
 func (a *Accumulator) ApplyToQuery(query *squirrel.SelectBuilder) {
 	sqlizer := a.GetCondition()
