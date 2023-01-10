@@ -19,7 +19,7 @@ import (
 	"github.com/monstercat/golib/data"
 )
 
-// DEPRECATED: this file is deprecated. We should migrate to the newer S3 interface.
+// DEPRECATED: this file is deprecated. We should migrate to the newer FS interface.
 
 const (
 	TempDirectoryEnv = "TEMP_DIR" // Would just use default temp directory if not specified
@@ -119,7 +119,6 @@ func (s *S3Baked) MkURL(key string) string {
 	return "s3://" + path.Join(s.DefaultBucket(), key)
 }
 
-
 func GetObjectInputFromConfig(c *data.SignedUrlConfig, bucket, key string) *s3.GetObjectInput {
 	return &s3.GetObjectInput{
 		Bucket:                     aws.String(bucket),
@@ -128,7 +127,6 @@ func GetObjectInputFromConfig(c *data.SignedUrlConfig, bucket, key string) *s3.G
 		ResponseContentType:        aws.String(c.GetContentType()),
 	}
 }
-
 
 func SignedUrl(info S3Info, key string, duration time.Duration, cfg *data.SignedUrlConfig) (string, error) {
 	sess := s3.New(info.GetSession())

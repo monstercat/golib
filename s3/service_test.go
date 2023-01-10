@@ -16,17 +16,29 @@ var (
 	Bucket = os.Getenv("S3_BUCKET")
 	Region = os.Getenv("AWS_REGION")
 
-	service = &Service{
+	service = makeService()
+)
+
+func makeService() *Service {
+	service := &Service{
 		Bucket:      Bucket,
 		Region:      Region,
 		Timeout:     50 * time.Second,
 		Concurrency: 1,
-
-		ChunkSizeLimit:         DefaultChunkSizeLimit,
-		MinUploadSizeChunked:   DefaultChunkSizeLimit,
-		IncompleteUploadExpiry: time.Hour * 24,
+		ChunkManager: data.ChunkManager{
+			ChunkSizeLimit: DefaultChunkSizeLimit,
+			//MinUploadSizeChunked:   DefaultChunkSizeLimit,
+			IncompleteUploadExpiry: time.Hour * 24,
+		},
 	}
-)
+	service.ChunkManager.FS = func() data.ChunkFileService {
+		return &ChunkFileService{
+			Bucket: Bucket,
+			Client: service.Client,
+		}
+	}
+	return service
+}
 
 const (
 	TestFilename1 = "test-file-1.txt"
@@ -69,14 +81,14 @@ func TestStandardS3Services(t *testing.T) {
 	makeFakeFile(TestFilename1, TestFilesize1)
 	defer cleanupFile(TestFilename1)
 
-	// Upload the small file to S3
+	// Upload the small file to FS
 	f, err := os.Open("./" + TestFilename1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
 
-	if err := service.Upload(TestFilename1, TestFilesize1, 1, f); err != nil {
+	if err := service.Upload(TestFilename1, TestFilesize1, f); err != nil {
 		t.Fatal(err)
 	}
 	exists, err := service.Exists(TestFilename1)
@@ -87,7 +99,7 @@ func TestStandardS3Services(t *testing.T) {
 		t.Fatal("File should be put, therefore, should exist")
 	}
 
-	// Download the file from S3
+	// Download the file from FS
 	rf, err := service.Get(TestFilename1)
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +113,7 @@ func TestStandardS3Services(t *testing.T) {
 		t.Fatal("File sizes not the same")
 	}
 
-	// Delete the file from S3
+	// Delete the file from FS
 	if err := service.Delete(TestFilename1); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +146,7 @@ func TestChunkedUpload(t *testing.T) {
 	}
 	defer f.Close()
 
-	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, -1, f)
+	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, f)
 
 	numProgress := 0
 L:
@@ -194,8 +206,7 @@ func TestResumeChunkUpload(t *testing.T) {
 	}
 	defer f.Close()
 
-
-	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, -1, f)
+	notifier := service.PutWithStatus(TestFilename2, TestFilesize2, f)
 
 L:
 	for {
@@ -212,8 +223,8 @@ L:
 		}
 	}
 
-	makeFakeFile(TestFilename2  + "-part2", TestFilesize2 - DefaultChunkSizeLimit)
-	defer cleanupFile(TestFilename2  + "-part2")
+	makeFakeFile(TestFilename2+"-part2", TestFilesize2-DefaultChunkSizeLimit)
+	defer cleanupFile(TestFilename2 + "-part2")
 
 	f, err = os.Open("./" + TestFilename2 + "-part2")
 	if err != nil {
@@ -221,10 +232,9 @@ L:
 	}
 	defer f.Close()
 
-
 	// We need to now resume the upload!
-	f.Seek(0,0)
-	notifier, err = service.ResumePutWithStatus(TestFilename2, TestFilesize2 - DefaultChunkSizeLimit, f)
+	f.Seek(0, 0)
+	notifier, err = service.ResumePutWithStatus(TestFilename2, f)
 	if err != nil {
 		t.Fatal(err)
 	}
