@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
+	"github.com/monstercat/golib/data"
 )
 
 type sequentialWriterAt struct {
@@ -46,8 +48,14 @@ func (s *Service) Get(filepath string) (io.ReadCloser, error) {
 	return out.Body, nil
 }
 
-func (s *Service) Download(filepath string, w io.WriterAt) error {
-	return s.download(filepath, w, s.Concurrency)
+func (s *Service) Download(filepath string, w io.WriterAt, p *data.DownloadParams) error {
+	concurrency := s.Concurrency
+	if p != nil {
+		if p.Concurrency != 0 {
+			concurrency = p.Concurrency
+		}
+	}
+	return s.download(filepath, w, concurrency)
 }
 
 func (s *Service) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
