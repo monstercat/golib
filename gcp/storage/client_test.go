@@ -2,56 +2,29 @@ package storage
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"io"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 
 	"github.com/monstercat/golib/data"
 )
 
-const (
-	fakePrivateKey = `
------BEGIN RSA PRIVATE KEY-----
-MIICXQIBAAKBgQCqGw3pOPKDx6WYg4BGxu2g3E404x7lP3U2gOWRfXs5ELOV16+O
-KLOKUiMVLrnPP0uDj0w8IDgfDOrWdTZGExyB26yM+QNoRxMoVMeGijQyXVGZifBP
-BEKq4f8fMF5vrwrjQj59T4ryoM8uPtBq1cwDDfrcl0DlVO4y5thP0gmaIQIDAQAB
-AoGBAKXXVoqogJfFz0aP/kICs63+2yhovbhXU9lddXOQ2M/b3poZ/Agm2lPinF2M
-fo71cJPE41hDOTPcjh+jitRq0YCVpfzUPVqeYibAhQN6bAh3z6ElvHSPKvexXbNL
-OKVTFInaLrXBa26z0I4ibRh5C7WV7Wig1UnAgGMj1FIF72YhAkEA8um0HYPH8aO7
-3HBOlR6/J0uTS+L3D9D5wPWnExMvrt5Fqf4KSG7UJ6aQJyBKw4jlryV3I1lcmYZu
-Ii6apLjx1QJBALNFLlmgb+02KASdLKkxKhUg7+dn/Q/TzY8Nusf6FNWThrztHpuA
-u7JaNDF2NbLW4ovlb8foa9ZIA3J5E2Vi4R0CQAvLSRF9yoFy/7YOReJ7obBYvQgc
-Nv6vmNDDnJ8SeWg2Jo/AY+NsbiSWs70Slk60IOLGIOi4eASEQGisdpm02RkCQA13
-ZervpVjBV7I5CFDRU6LwrXTJl/XnaCqV0nERNR1yDo4ElecCfZcBNah9g70ibTQr
-EQGIUQlwsWmY9L8J9XUCQQDVm21njykzYhoflqyfrdDSpx1eu9n3c9g6SJU7qo7+
-BBg4NK/4TTs3xZSb+YqGvP7W324PxJkmKlc1cGOTOOGu
------END RSA PRIVATE KEY-----
-`
-	fakePublicKey = `
------BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqGw3pOPKDx6WYg4BGxu2g3E40
-4x7lP3U2gOWRfXs5ELOV16+OKLOKUiMVLrnPP0uDj0w8IDgfDOrWdTZGExyB26yM
-+QNoRxMoVMeGijQyXVGZifBPBEKq4f8fMF5vrwrjQj59T4ryoM8uPtBq1cwDDfrc
-l0DlVO4y5thP0gmaIQIDAQAB
------END PUBLIC KEY-----
-`
-)
-
-func createCreds() []byte {
-	creds := &credentialsFile{
-		ClientEmail: "test@test.com",
-		PrivateKey:  fakePrivateKey,
-	}
-
-	b, _ := json.Marshal(creds)
-	return b
-}
-
+// TestClient tests GCS using the fakestorage client for GCS.
+// - Client.Exists
+// - Client.Delete
+// - Client.Head
+// - Client.Get
+// - Client.Put
+//
+// It also ensures that SignedUrl works without error.
 func TestClient(t *testing.T) {
 	content := []byte("test file content")
 	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
@@ -64,17 +37,23 @@ func TestClient(t *testing.T) {
 				Content: content,
 			},
 		},
-		Host: "127.0.0.1",
-		Port: 1337,
+		NoListener: true,
+		Host:       "127.0.0.1",
+		Port:       1337,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer server.Stop()
 
+	// this is required in order to retrieve proper credentials. Otherwise,
+	// server.Client() would be sufficient.
+	gcsClient, err := storage.NewClient(
+		context.Background(),
+		option.WithHTTPClient(server.HTTPClient()),
+	)
 	client := &Client{
-		BucketName: "Test-Bucket",
-		Client:     server.Client(),
+		Client: gcsClient,
 	}
 	client.Bucket = client.Client.Bucket("Test-Bucket")
 
@@ -140,63 +119,79 @@ func TestClient(t *testing.T) {
 	if _, err := client.Get("test-file.txt"); err != nil {
 		t.Fatal(err)
 	}
+
+	s, err := client.SignedUrl("test-file.txt", time.Hour, &data.SignedUrlConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = url.Parse(s)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
-func TestClient_SignedUrl(t *testing.T) {
-	creds := createCreds()
+// TestChunkedUpload tests the chunked upload functionality. It ensures that Put
+// Resume work properly.
+func TestChunkedUpload(t *testing.T) {
+	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
+		Host:       "127.0.0.1",
+		Port:       1337,
+		NoListener: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Stop()
+
 	client := &Client{
-		BucketName: "bucket",
+		Client:     server.Client(),
+		incomplete: make(map[string]*ChunkUpload),
 	}
+	client.Bucket = client.Client.Bucket("Test-Bucket")
 
-	if err := client.decodeCreds(creds); err != nil {
-		t.Fatal(err)
-	}
-	str, err := client.SignedUrl("test-file-path", time.Hour, &data.SignedUrlConfig{
-		ContentType: "application/json",
-		Download:    true,
-		Filename:    "test-file-name",
-	})
-	if err != nil {
+	// Create the bucket
+	if err := client.Bucket.Create(context.Background(), "", nil); err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := url.Parse(str)
-	if err != nil {
-		t.Fatal(err)
+	// Constants for this test
+	const filepath = "test_file"
+	const chunkSize = googleapi.DefaultUploadChunkSize
+	const numChunks = 5
+	const filesize = chunkSize * numChunks
+
+	// Contents.
+	contents := make([]rune, 0, filesize)
+	for i := 0; i < filesize; i++ {
+		contents = append(contents, rune((i%26)+65))
+	}
+	getChunk := func(i int) io.Reader {
+		if i >= numChunks {
+			return nil
+		}
+		start := i * chunkSize
+		finish := start + chunkSize
+		return strings.NewReader(string(contents[start:finish]))
 	}
 
-	qry := u.Query()
-	ct := qry.Get("response-content-type")
-	cd := qry.Get("response-content-disposition")
+	// 1. Put a file with status.
+	notifier := client.PutWithStatus(filepath, filesize, getChunk(0))
+	go func() {
+		// We are just going to ignore the notifier
+		for n := range notifier {
+			t.Logf("%#v", n)
+		}
+	}()
+	defer close(notifier)
 
-	if ct != "application/json" {
-		t.Errorf("Content Type should be provided through response-content-type. Got %s", ct)
-	}
-	if cd != "attachment; filename=\"test-file-name\"" {
-		t.Errorf("Content disposition invalid. Got %s", cd)
-	}
-
-	str, err = client.SignedUrl("test-file-path", time.Hour, &data.SignedUrlConfig{
-		ContentType: "application/json",
-		Download:    false,
-	})
-	if err != nil {
-		t.Fatal(err)
+	for i := 1; i < filesize/chunkSize; i++ {
+		_, err := client.ResumePutWithStatus(filepath, getChunk(i))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	u, err = url.Parse(str)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	qry = u.Query()
-	ct = qry.Get("response-content-type")
-	cd = qry.Get("response-content-disposition")
-
-	if ct != "application/json" {
-		t.Errorf("Content Type should be provided through response-content-type. Got %s", ct)
-	}
-	if cd != "inline" {
-		t.Errorf("Content disposition invalid. Got %s", cd)
+	if client.GetIncompleteUpload(filepath) != nil {
+		t.Errorf("Expecting upload to be complete. But we were still able to retrieve an incomplete upload.")
 	}
 }

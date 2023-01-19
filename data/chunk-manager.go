@@ -132,6 +132,9 @@ func (m *ChunkManager) ResumePutWithStatus(filepath string, r io.Reader) (chan U
 	m.lock.RUnlock()
 
 	// Check if the upload is still processing (it should be). If not, we should not be trying to resume it.
+	if upload == nil {
+		return nil, ErrUploadNotFound
+	}
 	if !upload.IsProcessing() {
 		return nil, ErrUploadNotFound
 	}
