@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/monstercat/golib/data"
+	strutil "github.com/monstercat/golib/string"
 )
 
 const DefaultChunkSizeLimit = 1024 * 1024 * 50
@@ -94,6 +95,13 @@ func (s *Service) Head(filepath string) (*data.HeadInfo, error) {
 }
 
 func (s *Service) SignedUrl(filename string, tm time.Duration, config *data.SignedUrlConfig) (string, error) {
+	// Before signing, the filename needs to be in ISO 8859 1 format.
+	var err error
+	config.Filename, err = strutil.ToISO_8859_1(config.Filename)
+	if err != nil {
+		return "", err
+	}
+
 	req, _ := s.Client.GetObjectRequest(GetObjectInputFromConfig(
 		config,
 		s.Bucket,

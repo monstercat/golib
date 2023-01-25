@@ -16,6 +16,7 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/monstercat/pgnull v0.0.0-20211008053451-c7be7177fe76
 	github.com/monstercat/websocket v0.0.0-20211027191942-c20559603674
+	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/tidwall/gjson v1.11.0

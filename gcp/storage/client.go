@@ -425,3 +425,39 @@ func (c *Client) GetIncompleteUpload(filepath string) data.Upload {
 func (c *Client) GetChunkSize() int {
 	return googleapi.DefaultUploadChunkSize
 }
+
+// Stream allows data to be streamed into a writer.
+func (c *Client) Stream(filepath string, w io.Writer) error {
+	ctx, cancel := c.createContext()
+	defer cancel()
+
+	r, err := c.Bucket.Object(filepath).NewReader(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(w, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DownloadRange allows for a part of the file to be downloaded. Dictate the
+// start and finish of the download, and the result will be written into
+// io.WriterAt.
+func (c *Client) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
+	ww := &writeAtWrap{WriterAt: w}
+
+	ctx, cancel := c.createContext()
+	defer cancel()
+
+	offset := int64(start)
+	length := int64(finish) - offset
+	r, err := c.Bucket.Object(filepath).NewRangeReader(ctx, offset, length)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(ww, r); err != nil {
+		return err
+	}
+	return nil
+}
