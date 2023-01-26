@@ -143,8 +143,32 @@ func (c *Client) Head(filepath string) (*data.HeadInfo, error) {
 // Get returns a reader that can be used to retrieve a file.
 func (c *Client) Get(filepath string) (io.ReadCloser, error) {
 	ctx, cancel := c.createContext()
-	defer cancel()
-	return c.Bucket.Object(filepath).NewReader(ctx)
+	return cancelWrapReadCloser(cancel)(c.Bucket.Object(filepath).NewReader(ctx))
+}
+
+func cancelWrapReadCloser(cancel func()) func(closer io.ReadCloser, err error) (io.ReadCloser, error) {
+	return func(r io.ReadCloser, err error) (io.ReadCloser, error) {
+		if err != nil {
+			return nil, err
+		}
+		return &contextCancelReadCloser{
+			cancel:     cancel,
+			ReadCloser: r,
+		}, nil
+	}
+}
+
+// contextCancelReadCloser is a special read closer that calls cancel when
+// close is cancelled. This is to allow timeout to work for the storage client.
+type contextCancelReadCloser struct {
+	cancel func()
+	io.ReadCloser
+}
+
+// Close implements the close interface.
+func (c *contextCancelReadCloser) Close() error {
+	c.cancel()
+	return c.ReadCloser.Close()
 }
 
 func (c *Client) Delete(filepath string) error {
