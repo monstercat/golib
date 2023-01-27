@@ -40,7 +40,7 @@ func IterateStructFields(e interface{}, it StructFieldIterator) {
 		// Also need to change refVal.
 		refVal = reflect.Indirect(reflect.New(refType))
 	} else if refType.Kind() == reflect.Interface {
-		// There is a change that the refType is an interface and the refVal
+		// There is a chance that the refType is an interface and the refVal
 		// is a Struct due to the possibility of passing in a reflect.Value
 		// value into IterateStructFields as the first parameter.
 		//
