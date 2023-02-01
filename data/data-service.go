@@ -135,3 +135,29 @@ type RangeService interface {
 type StreamService interface {
 	Stream(filepath string, w io.Writer) error
 }
+
+// ListService allows for objects to be listed.
+type ListService interface {
+	// Objects should return an iterator for all objects in a bucket.
+	Objects() (ObjectIterator, func())
+}
+
+// Object is metadata relating to an object in the data service.
+type Object struct {
+	// Filepath for the object.
+	Filepath string
+
+	// ContentType is the MIME type of the object's content.
+	ContentType string
+
+	// Size is the length of the object's content.
+	Size int64
+}
+
+// ObjectIterator iterates through objects in a list.
+type ObjectIterator interface {
+	// Next returns the next result. Its second return value is iterator.Done if
+	// there are no more results. Once Next returns iterator.Done, all subsequent
+	// calls will return iterator.Done.
+	Next() (*Object, error)
+}

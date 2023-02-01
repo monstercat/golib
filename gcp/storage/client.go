@@ -115,7 +115,13 @@ func (c *Client) Exists(filepath string) (bool, error) {
 	defer cancel()
 
 	_, err := c.Bucket.Object(filepath).Attrs(ctx)
-	return err != storage.ErrObjectNotExist, err
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Head returns information regarding the requested file
@@ -484,4 +490,27 @@ func (c *Client) DownloadRange(filepath string, w io.WriterAt, start, finish int
 		return err
 	}
 	return nil
+}
+
+// Objects should return an iterator for all objects in a bucket.
+func (c *Client) Objects() (data.ObjectIterator, func()) {
+	ctx, cancel := c.createContext()
+	it := c.Bucket.Objects(ctx, nil)
+	return &gcsObjectIterator{ObjectIterator: it}, cancel
+}
+
+type gcsObjectIterator struct {
+	*storage.ObjectIterator
+}
+
+func (i *gcsObjectIterator) Next() (*data.Object, error) {
+	obj, err := i.ObjectIterator.Next()
+	if err != nil {
+		return nil, err
+	}
+	return &data.Object{
+		Filepath:    obj.Name,
+		ContentType: obj.ContentType,
+		Size:        obj.Size,
+	}, nil
 }
