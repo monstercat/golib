@@ -18,8 +18,9 @@ func (e StandardContextEntry) GetLog() interface{} {
 	return e.Log
 }
 
-// ContextualEntry is a log that can have a context. It will be used by the Context to insert a context. This
-// is if the log should have a specific structure regardless of whether a context is provided or not.
+// ContextualEntry is a log that can have a context. It will be used by the
+// Contextual logger to insert a context. This is if the log should have a
+// specific structure regardless of whether a context is provided or not.
 type ContextualEntry interface {
 	SetContext(interface{})
 	GetContext() interface{}
