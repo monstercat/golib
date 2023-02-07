@@ -111,12 +111,19 @@ func (m *ChunkManager) PutWithStatus(filepath string, filesize int, r io.Reader)
 	// Calculate the number of chunks
 	chunks := int(math.Ceil(float64(filesize) / float64(m.ChunkSizeLimit)))
 
+	// If the number of chunks is less than 2, we should make the parts channel
+	// at least 2 big.
+	numParts := chunks
+	if numParts < 2 {
+		numParts = 2
+	}
+
 	upload := &ChunkUpload{
 		Filepath: filepath,
 		FS:       m.FS(),
 		Expiry:   time.Now().Add(m.IncompleteUploadExpiry),
 		notifier: make(chan UploadStatus, 2),
-		parts:    make(chan []byte, chunks),
+		parts:    make(chan []byte, numParts),
 		Chunks:   chunks,
 	}
 	m.uploads <- upload
