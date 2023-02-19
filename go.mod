@@ -1,6 +1,6 @@
 module github.com/monstercat/golib
 
-go 1.16
+go 1.19
 
 require (
 	cloud.google.com/go/logging v1.4.2
@@ -16,13 +16,17 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/monstercat/pgnull v0.0.0-20211008053451-c7be7177fe76
 	github.com/monstercat/websocket v0.0.0-20211027191942-c20559603674
-	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/tidwall/gjson v1.11.0
 	github.com/trubitsyn/go-zero-width v1.0.1
 	google.golang.org/api v0.59.0
 	google.golang.org/genproto v0.0.0-20211027162914-98a5263abeca
+)
+
+require (
+	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c // indirect
+	golang.org/x/net v0.7.0 // indirect
 )
 
 replace github.com/monstercat/pgnull => ../pgnull
