@@ -281,6 +281,8 @@ func (c *Client) Download(filepath string, w io.WriterAt, p *data.DownloadParams
 	if err != nil {
 		return err
 	}
+	defer rdr.Close()
+	
 	wr := &writeAtWrap{WriterAt: w}
 	if _, err := io.Copy(wr, rdr); err != nil {
 		return err
