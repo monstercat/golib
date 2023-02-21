@@ -282,7 +282,7 @@ func (c *Client) Download(filepath string, w io.WriterAt, p *data.DownloadParams
 		return err
 	}
 	defer rdr.Close()
-	
+
 	wr := &writeAtWrap{WriterAt: w}
 	if _, err := io.Copy(wr, rdr); err != nil {
 		return err
@@ -474,8 +474,9 @@ func (c *Client) Stream(filepath string, w io.Writer) error {
 }
 
 // DownloadRange allows for a part of the file to be downloaded. Dictate the
-// start and finish of the download, and the result will be written into
-// io.WriterAt.
+// [start, finish) of the download, and the result will be written into
+// io.WriterAt. For example, if start=0 and end=5, bytes 0...4 should be
+// writen. 
 func (c *Client) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
 	ww := &writeAtWrap{WriterAt: w}
 

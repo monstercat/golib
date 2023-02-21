@@ -125,8 +125,11 @@ type ParallelService interface {
 	Upload(filepath string, filesize int, r io.Reader) error
 }
 
-// RangeService allows for a part of the file to be downloaded. Dictate the start and finish of the download, and the
-// result will be written into io.WriterAt.
+// RangeService allows for a part of the file to be downloaded. Dictate the
+// [start, finish) of the download, and the result will be written into
+// io.WriterAt.
+//
+// For example, if start=0 and finish=5, the function should return bytes 0-4.
 type RangeService interface {
 	DownloadRange(filepath string, w io.WriterAt, start, finish int) error
 }
