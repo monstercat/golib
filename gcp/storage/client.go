@@ -406,17 +406,17 @@ func (c *Client) PutWithStatus(filepath string, filesize int, r io.Reader) chan 
 		}()
 	}
 
-	finished, err := u.Copy(r)
-	if err != nil {
-		return u.Notifier
-	}
-
-	if !finished {
-		c.lock.Lock()
-		c.incomplete[filepath] = u
-		c.lock.Unlock()
-	}
-
+	// We need to return notifier *right away*. Progress reporting might cause
+	// it to get stuck! We ignore the error because it is already sent on the
+	// notifier. 
+	go func() {
+		finished, _ := u.Copy(r)
+		if !finished {
+			c.lock.Lock()
+			c.incomplete[filepath] = u
+			c.lock.Unlock()
+		}
+	}()
 	return u.Notifier
 }
 
@@ -476,7 +476,7 @@ func (c *Client) Stream(filepath string, w io.Writer) error {
 // DownloadRange allows for a part of the file to be downloaded. Dictate the
 // [start, finish) of the download, and the result will be written into
 // io.WriterAt. For example, if start=0 and end=5, bytes 0...4 should be
-// writen. 
+// writen.
 func (c *Client) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
 	ww := &writeAtWrap{WriterAt: w}
 
