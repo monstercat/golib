@@ -396,6 +396,7 @@ func (c *Client) PutWithStatus(filepath string, filesize int, r io.Reader) chan 
 		Notifier: make(chan data.UploadStatus, 3),
 		FileSize: filesize,
 	}
+
 	// Write to the notifier based on progress.
 	u.writer.ProgressFunc = func(i int64) {
 		go func() {
@@ -408,7 +409,7 @@ func (c *Client) PutWithStatus(filepath string, filesize int, r io.Reader) chan 
 
 	// We need to return notifier *right away*. Progress reporting might cause
 	// it to get stuck! We ignore the error because it is already sent on the
-	// notifier. 
+	// notifier.
 	go func() {
 		finished, _ := u.Copy(r)
 		if !finished {
