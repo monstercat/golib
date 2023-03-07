@@ -34,40 +34,40 @@ type ContextualEntry interface {
 // To use the Contextual, wrap another .
 //
 // For example:
-// logger := &Contextual{
-//    Logger: baseLogger,
-//    Context: map[string]interface{} {...}
-// }
+//
+//	logger := &Contextual{
+//	   Logger: baseLogger,
+//	   Context: map[string]interface{} {...}
+//	}
 //
 // ...
 // logger.Log(LogSeverityInfo, "Some log") should present a log that has:
-// {
-//    Context: ...
-//    Log: "Some log"
-// }
+//
+//	{
+//	   Context: ...
+//	   Log: "Some log"
+//	}
 //
 // In the case that the provided log is a struct that implements the ContextualLogEntry interface, it will instead use
 // the SetContext method.
 //
 // logger.Log(LogSeverityInfo, LogMetricEntry{...})
-// {
-//    ... parts of LogMetricEntry
-//    Context: {...}  // This variable is defined in LogMetricEntry and is used to store the Context for that entry.
-// }
+//
+//	{
+//	   ... parts of LogMetricEntry
+//	   Context: {...}  // This variable is defined in LogMetricEntry and is used to store the Context for that entry.
+//	}
 type Contextual struct {
 	Logger
 	Context interface{}
 }
 
 func (l *Contextual) Log(severity Severity, payload interface{}) {
-	if e, ok := payload.(ContextualEntry); ok {
-		e.SetContext(l.Context)
-		l.Logger.Log(severity, e)
-		return
+	e, ok := payload.(ContextualEntry)
+	if !ok {
+		e = NewContextualPayload(payload)
 	}
 
-	l.Logger.Log(severity, StandardContextEntry{
-		Context: l.Context,
-		Log:     payload,
-	})
+	e.SetContext(l.Context)
+	l.Logger.Log(severity, e)
 }
