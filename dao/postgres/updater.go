@@ -4,11 +4,12 @@ import (
 	"errors"
 
 	"github.com/Masterminds/squirrel"
+
+	"github.com/monstercat/golib/dao/daohelpers"
 )
 
 var (
-	ErrMissingConditions = errors.New("missing conditions")
-	ErrMissingProvider   = errors.New("missing db provider")
+	ErrMissingProvider = errors.New("missing db provider")
 )
 
 // Updater provides some default insert/update/delete functionality. The parameter T is the type for the ID which is
@@ -70,7 +71,7 @@ func (u *Updater[T]) Update() error {
 		return ErrMissingProvider
 	}
 	if !u.QueryBuilder.HasConditions() {
-		return ErrMissingConditions
+		return daohelpers.ErrNoConditions
 	}
 	// Return an error if an error is present.
 	if u.err != nil {
@@ -80,11 +81,24 @@ func (u *Updater[T]) Update() error {
 	if u.PreprocessUpdate != nil {
 		qry = u.PreprocessUpdate(u.QueryBuilder.table, qry)
 	}
-	_, err := qry.
+	res, err := qry.
 		PlaceholderFormat(squirrel.Dollar).
 		RunWith(u.Provider.GetDb()).
 		Exec()
-	return err
+	if err != nil {
+		return err
+	}
+
+	// We need to check results! If nothing was updated, an error should be
+	// returned.
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return daohelpers.ErrNoUpdatePerformed
+	}
+	return nil
 }
 
 func (u *Updater[T]) Insert() (T, error) {
@@ -106,14 +120,31 @@ func (u *Updater[T]) InsertNoId() error {
 }
 
 func (u *Updater[T]) Delete() error {
+	if !u.QueryBuilder.HasConditions() {
+		return daohelpers.ErrNoConditions
+	}
+
 	qry := u.QueryBuilder.DeleteBuilder()
 	if u.PreprocessDelete != nil {
 		qry = u.PreprocessDelete(u.QueryBuilder.table, qry)
 	}
 
-	_, err := qry.
+	res, err := qry.
 		PlaceholderFormat(squirrel.Dollar).
 		RunWith(u.Provider.GetDb()).
 		Exec()
-	return err
+	if err != nil {
+		return err
+	}
+
+	// We need to check results! If nothing was updated, an error should be
+	// returned.
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return daohelpers.ErrNoDeletePerformed
+	}
+	return nil
 }
