@@ -97,6 +97,14 @@ func (u *Updater[T]) Insert() (T, error) {
 	return id, err
 }
 
+func (u *Updater[T]) InsertNoId() error {
+	_, err := u.QueryBuilder.InsertBuilder(u.Data).
+		PlaceholderFormat(squirrel.Dollar).
+		RunWith(u.Provider.GetDb()).
+		Exec()
+	return err
+}
+
 func (u *Updater[T]) Delete() error {
 	qry := u.QueryBuilder.DeleteBuilder()
 	if u.PreprocessDelete != nil {
