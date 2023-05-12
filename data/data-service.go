@@ -49,6 +49,12 @@ type ServiceWithConcurrency interface {
 	SetConcurrency(concurrency int)
 }
 
+// ServiceWithMimeType allows to set the MimeType/ContentType for a specific file that has been uploaded.
+// This service is optional.
+type ServiceWithMimeType interface {
+	SetMimeType(filepath, mimeType string) error
+}
+
 // Service defines a basic data service. It allows the user to Get, Put, Delete, and check that a certain piece of
 // data exists. Categorization is by filepath (not necessarily / delimited). To use this service, encapsulate it in
 // another interface.

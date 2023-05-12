@@ -17,6 +17,48 @@ import (
 	"github.com/monstercat/golib/data"
 )
 
+func TestClient_SetMimeType(t *testing.T) {
+	content := []byte("test file content")
+	bucketName := "Test-Bucket"
+	objectName := "test-file.txt"
+	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
+		InitialObjects: []fakestorage.Object{
+			{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:  bucketName,
+					Name:        objectName,
+					ContentType: "application/octet",
+				},
+				Content: content,
+			},
+		},
+		NoListener: true,
+		Host:       "127.0.0.1",
+		Port:       1337,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Stop()
+
+	// this is required in order to retrieve proper credentials. Otherwise,
+	// server.Client() would be sufficient.
+	gcsClient, err := storage.NewClient(
+		context.Background(),
+		option.WithHTTPClient(server.HTTPClient()),
+	)
+
+	client := &Client{
+		Client: gcsClient,
+	}
+	client.Bucket = client.Client.Bucket("Test-Bucket")
+
+	err = client.SetMimeType("test-file.txt", "audio/wave")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestClient tests GCS using the fakestorage client for GCS.
 // - Client.Exists
 // - Client.Delete

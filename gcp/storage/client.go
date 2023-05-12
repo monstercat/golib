@@ -26,6 +26,7 @@ var (
 // - data.HeadService
 // - data.ChunkService
 // - data.SignedUrlService
+// - data.MimeTypeService
 //
 // Note that it doesn't use data.ChunkManager because the default GCS client
 // is already chunked. Additional chunking would only cause an extra useless
@@ -219,7 +220,7 @@ func (c *Client) SignedUrl(filepath string, tm time.Duration, cfg *data.SignedUr
 	// for the credentials JSON, the filepath is signed automatically.
 	str, err := c.Bucket.SignedURL(filepath, &storage.SignedURLOptions{
 		// TODO: test SigningSchemeV4.
-		//Scheme: storage.SigningSchemeV4,
+		// Scheme: storage.SigningSchemeV4,
 		Method:  http.MethodGet,
 		Expires: time.Now().Add(tm),
 	})
@@ -501,6 +502,23 @@ func (c *Client) Objects() (data.ObjectIterator, func()) {
 	ctx, cancel := c.createContext()
 	it := c.Bucket.Objects(ctx, nil)
 	return &gcsObjectIterator{ObjectIterator: it}, cancel
+}
+
+// SetMimeType sets the MimeType/ContentType with the filepath that has been
+// uploaded.
+func (c *Client) SetMimeType(filepath, mimeType string) error {
+	ctx, cancel := c.createContext()
+	defer cancel()
+
+	object := c.Bucket.Object(filepath)
+
+	_, err := object.Update(ctx, storage.ObjectAttrsToUpdate{
+		ContentType: mimeType,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type gcsObjectIterator struct {
