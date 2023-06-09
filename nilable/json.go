@@ -75,7 +75,7 @@ func (j *JSON[T]) MarshalJSON() ([]byte, error) {
 
 func (j *JSON[T]) marshalJSON() ([]byte, error) {
 	if j.IsNil() {
-		return []byte("nil"), nil
+		return []byte("null"), nil
 	}
 	return json.Marshal(j.Value())
 }

@@ -1,34 +1,31 @@
 package nilable
 
-import "time"
-
-// NewTime creates a new time nullable.
-func NewTime() Nilable[time.Time] {
-	t := &Time{}
-	return t
+// New creates a new Nilable for an
+func New[T any]() Nilable[T] {
+	return NewWrapper[T](&Value[T]{})
 }
 
-// Time stores a time value which could be nil.
-type Time struct {
+// Value is the base version of Nilable. It stores a value of any type
+type Value[T any] struct {
 	Base
-	Data time.Time
+	Data T
 }
 
 // Value returns the stored value without checking if it is Null. This may
 // be a zero value or nil if IsNull is true.
-func (p *Time) Value() time.Time {
+func (p *Value[T]) Value() T {
 	return p.Data
 }
 
 // SetNil sets whether the object is nil. It is self returning.
-func (p *Time) SetNil(b bool) Nilable[time.Time] {
+func (p *Value[T]) SetNil(b bool) Nilable[T] {
 	p.Nil = b
 	return p
 }
 
 // SetValue sets the value, regardless of whether the value is null. It is
 // self returning.
-func (p *Time) SetValue(value time.Time) Nilable[time.Time] {
+func (p *Value[T]) SetValue(value T) Nilable[T] {
 	p.Data = value
 	return p
 }

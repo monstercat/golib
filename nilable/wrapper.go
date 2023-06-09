@@ -1,8 +1,12 @@
 package nilable
 
-// New returns a new wrapper.
-func New[T any]() *Wrapper[T] {
-	return &Wrapper[T]{}
+// NewWrapper returns a new wrapper. Note that JSON is included immediately.
+// This is due to the specifics of how the encoding/json package detects
+// `Unmarshaller` and `Marshaller`. Embedding structs does not suffice.
+func NewWrapper[T any](n Nilable[T]) *Wrapper[T] {
+	return &Wrapper[T]{
+		Nilable: NewJSON[T](n),
+	}
 }
 
 // Wrapper wraps any nullable type. If provides functionality for adding
@@ -13,15 +17,25 @@ type Wrapper[T any] struct {
 	Nilable[T]
 }
 
-// With uses the provided Nilable as the base Nilable for the wrapper.
-func (w *Wrapper[T]) With(n Nilable[T]) *Wrapper[T] {
-	w.Nilable = n
-	return w
-}
-
 // Unwrap returns the Nilable underneath.
 func (w *Wrapper[T]) Unwrap() Nilable[T] {
 	return w.Nilable
+}
+
+// UnmarshalJSON unmarshals a JSON object into the provided Nilable. This is
+// required due to the way the encoding/json package works. Internally, it simply
+// finds the JSON object uses its UnmarshalJSON function.
+func (w *Wrapper[T]) UnmarshalJSON(b []byte) error {
+	j := Find[T, *JSON[T]](w.Nilable).(*JSON[T])
+	return j.UnmarshalJSON(b)
+}
+
+// MarshalJSON implements the Marshaller interface. This is required due to the
+// way the encoding/json package works. Internally, it simply finds the JSON
+// object uses its UnmarshalJSON function.
+func (w *Wrapper[T]) MarshalJSON() ([]byte, error) {
+	j := Find[T, *JSON[T]](w.Nilable).(*JSON[T])
+	return j.MarshalJSON()
 }
 
 // Wraps defines a type of nullable which wraps another nullable. For example,
