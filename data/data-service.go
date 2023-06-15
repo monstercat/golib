@@ -85,6 +85,12 @@ type SignedUrlService interface {
 	SignedUrl(filepath string, tm time.Duration, cfg *SignedUrlConfig) (string, error)
 }
 
+// SignedUrlUploadService allows a service to return a signed URL for uploading
+// an object to a filepath.
+type SignedUrlUploadService interface {
+	PutSignedUrl(filepath string, tm time.Duration, cfg *SignedUrlConfig) (string, error)
+}
+
 // HeadInfo is the information returned by the HeadService.
 type HeadInfo struct {
 	Exists        bool

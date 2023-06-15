@@ -219,10 +219,10 @@ func (c *Client) SignedUrl(filepath string, tm time.Duration, cfg *data.SignedUr
 	// In the first case, an HTTP call is used to authenticate. However,
 	// for the credentials JSON, the filepath is signed automatically.
 	str, err := c.Bucket.SignedURL(filepath, &storage.SignedURLOptions{
-		// TODO: test SigningSchemeV4.
-		// Scheme: storage.SigningSchemeV4,
-		Method:  http.MethodGet,
-		Expires: time.Now().Add(tm),
+		Scheme:      storage.SigningSchemeV4,
+		Method:      http.MethodGet,
+		ContentType: cfg.GetContentType(),
+		Expires:     time.Now().Add(tm),
 	})
 	if err != nil {
 		return "", err
@@ -243,13 +243,44 @@ func (c *Client) SignedUrl(filepath string, tm time.Duration, cfg *data.SignedUr
 	qry := u.Query()
 
 	// https://cloud.google.com/storage/docs/xml-api/reference-headers#responsecontentdisposition
-	qry.Set("response-content-disposition", cfg.GetDisposition())
+	if d := cfg.GetDisposition(); d != "" {
+		qry.Set("response-content-disposition", d)
+	}
 
 	// https://cloud.google.com/storage/docs/xml-api/reference-headers#responsecontenttype
-	qry.Set("response-content-type", cfg.GetContentType())
+	if contentType := cfg.GetContentType(); contentType != "" {
+		qry.Set("response-content-type", cfg.GetContentType())
+	}
 	u.RawQuery = qry.Encode()
 
 	return u.String(), nil
+}
+
+// PutSignedUrl creates a SignedURL for uploading files directly to the
+// configured GCS bucket. Unfortunately, content-type cannot be inferred from
+// the data.SignedURLConfig object since it requires adding a header into the
+// Signed URL request that needs to be replicated by the one calling the request.
+//
+// This is burdensome for any application requiring use of this signed URL.
+// Instead, the application can simply include it in its ContentType parameter
+// and signing should still be successful.
+func (c *Client) PutSignedUrl(filepath string, tm time.Duration, cfg *data.SignedUrlConfig) (string, error) {
+	// As of https://github.com/googleapis/google-cloud-go/pull/4604 we do not
+	// need to send credentials. Existing credentials (e.g., as eet up via
+	// option.ClientOption can be used.
+	//
+	// It checks for existence of GoogleAccessID through the metadata service,
+	// and signs the bytes properly unless a credentials JSON is provided, in
+	// which case it uses the private key from the credentials JSON.
+	//
+	// In the first case, an HTTP call is used to authenticate. However,
+	// for the credentials JSON, the filepath is signed automatically.
+	return c.Bucket.SignedURL(filepath, &storage.SignedURLOptions{
+		Scheme:  storage.SigningSchemeV4,
+		Method:  http.MethodPut,
+		Headers: []string{},
+		Expires: time.Now().Add(tm),
+	})
 }
 
 // writeAtWrap wraps an io.WriterAt so that it functions as a Write. It does
