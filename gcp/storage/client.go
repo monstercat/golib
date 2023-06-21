@@ -219,10 +219,9 @@ func (c *Client) SignedUrl(filepath string, tm time.Duration, cfg *data.SignedUr
 	// In the first case, an HTTP call is used to authenticate. However,
 	// for the credentials JSON, the filepath is signed automatically.
 	str, err := c.Bucket.SignedURL(filepath, &storage.SignedURLOptions{
-		Scheme:      storage.SigningSchemeV4,
-		Method:      http.MethodGet,
-		ContentType: cfg.GetContentType(),
-		Expires:     time.Now().Add(tm),
+		Scheme:  storage.SigningSchemeV2,
+		Method:  http.MethodGet,
+		Expires: time.Now().Add(tm),
 	})
 	if err != nil {
 		return "", err
