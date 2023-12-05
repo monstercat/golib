@@ -147,6 +147,19 @@ func (c *Client) Head(filepath string) (*data.HeadInfo, error) {
 	}, nil
 }
 
+// MD5 returns MD5 hash of a GCS object with the given filepath
+func (c *Client) MD5(filepath string) ([]byte, error) {
+	ctx, cancel := c.createContext()
+	defer cancel()
+
+	attrs, err := c.Bucket.Object(filepath).Attrs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return attrs.MD5, nil
+}
+
 // Get returns a reader that can be used to retrieve a file.
 func (c *Client) Get(filepath string) (io.ReadCloser, error) {
 	ctx, cancel := c.createContext()
