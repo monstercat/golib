@@ -80,6 +80,11 @@ type HeadService interface {
 	Head(filepath string) (*HeadInfo, error)
 }
 
+// MD5Service provides a way for a data service to return MD5 hash from data object attributes.
+type MD5Service interface {
+	MD5(filepath string) ([]byte, error)
+}
+
 // SignedUrlService allows a service to return a signed URL for a filepath.
 type SignedUrlService interface {
 	SignedUrl(filepath string, tm time.Duration, cfg *SignedUrlConfig) (string, error)
