@@ -103,5 +103,21 @@ func GetData(v reflect.Value) (data interface{}, isZero bool, checked bool) {
 		data = dt
 		checked = true
 	}
+
+	if !checked {
+		v, ok := data.(IGetData)
+		if !ok {
+			return
+		}
+
+		data, isZero = v.GetSetMapData()
+		checked = true
+	}
+
 	return
+}
+
+// IGetData is an interface that can be used to extract data from an object.
+type IGetData interface {
+	GetSetMapData() (any, bool)
 }
