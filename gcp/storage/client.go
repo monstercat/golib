@@ -21,6 +21,10 @@ var (
 	ErrTimeout = errors.New("timeout")
 )
 
+const (
+	minDownloadChunkSize = 1024 * 4
+)
+
 // Client wraps google's *storage.Client to implement:
 // - data.Service
 // - data.HeadService
@@ -318,19 +322,76 @@ func (w *writeAtWrap) Write(p []byte) (int, error) {
 }
 
 // Download is supposed to download a file in parallel (by splitting it into
-// different parts to download). However, GCS doesn't seem to have this
-// functionality built in. Thus, we ignore it.
+// different parts to download). We can do this by downloading in chunks.
 func (c *Client) Download(filepath string, w io.WriterAt, p *data.DownloadParams) error {
-	rdr, err := c.Get(filepath)
+	// If concurrency is 1, just use Get
+	if p.Concurrency == 1 {
+		rdr, err := c.Get(filepath)
+		if err != nil {
+			return err
+		}
+		defer rdr.Close()
+
+		wr := &writeAtWrap{WriterAt: w}
+		if _, err := io.Copy(wr, rdr); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Get the size of the object.
+	attrs, err := c.Head(filepath)
 	if err != nil {
 		return err
 	}
-	defer rdr.Close()
 
-	wr := &writeAtWrap{WriterAt: w}
-	if _, err := io.Copy(wr, rdr); err != nil {
-		return err
+	// Check the range size for the download, based on the concurrency in the
+	// download params. This number should be > 4KB
+	sizePerChunk := attrs.ContentLength / int64(p.Concurrency)
+	if sizePerChunk < minDownloadChunkSize {
+		sizePerChunk = minDownloadChunkSize
 	}
+
+	// Get the number of chunks again. Perform ceil operation.
+	numChunks := attrs.ContentLength / sizePerChunk
+	if numChunks*sizePerChunk < attrs.ContentLength {
+		numChunks++
+	}
+
+	// Download all chunks simultaneously.
+	var wg sync.WaitGroup
+	wg.Add(int(numChunks))
+
+	ctx, cause := context.WithCancelCause(context.Background())
+
+	for i := int64(0); i < numChunks; i++ {
+		go func(i int64) {
+			defer wg.Done()
+
+			start := i * sizePerChunk
+			size := attrs.ContentLength - sizePerChunk
+			if size > sizePerChunk {
+				size = sizePerChunk
+			}
+
+			// This will allow us to use io.Copy
+			offsetWriter := io.NewOffsetWriter(w, start)
+
+			rdr, err := c.Bucket.Object(filepath).NewRangeReader(ctx, start, size)
+			if err != nil {
+				cause(err)
+				return
+			}
+			if err := ctx.Err(); err != nil {
+				return
+			}
+			if _, err := io.Copy(offsetWriter, rdr); err != nil {
+				cause(err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
 	return nil
 }
 
