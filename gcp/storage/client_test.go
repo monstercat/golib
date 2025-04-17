@@ -3,6 +3,8 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/url"
 	"strings"
@@ -236,4 +238,70 @@ func TestChunkedUpload(t *testing.T) {
 	if client.GetIncompleteUpload(filepath) != nil {
 		t.Errorf("Expecting upload to be complete. But we were still able to retrieve an incomplete upload.")
 	}
+}
+
+func TestConcurrentDownload(t *testing.T) {
+	content := make([]byte, 0, 1024*10)
+	for i := 0; i < 1024; i++ {
+		content = append(content, byte(i))
+	}
+	bucketName := "Test-Bucket"
+	objectName := "test-file.txt"
+	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
+		InitialObjects: []fakestorage.Object{
+			{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName:  bucketName,
+					Name:        objectName,
+					ContentType: "application/octet",
+				},
+				Content: content,
+			},
+		},
+		NoListener: true,
+		Host:       "127.0.0.1",
+		Port:       1337,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Stop()
+
+	// this is required in order to retrieve proper credentials. Otherwise,
+	// server.Client() would be sufficient.
+	gcsClient, err := storage.NewClient(
+		context.Background(),
+		option.WithHTTPClient(server.HTTPClient()),
+	)
+
+	client := &Client{
+		Client: gcsClient,
+	}
+	client.Bucket = client.Client.Bucket("Test-Bucket")
+
+	// Writer used for checking
+	w := &writerAtChecker{checkBuf: content}
+	assert.NoError(t, client.Download("test-file.txt", w, &data.DownloadParams{
+		Concurrency: 2,
+	}))
+}
+
+// writerAtChecker checks if the items at the specified location match what is
+// written to it.
+type writerAtChecker struct {
+	checkBuf []byte
+}
+
+func (w *writerAtChecker) WriteAt(p []byte, off int64) (n int, err error) {
+	l := len(p)
+	if len(w.checkBuf) < int(off)+l {
+		return 0, errors.New("writing more than expected")
+	}
+
+	section := w.checkBuf[off : int(off)+l]
+	if !bytes.Equal(section, p) {
+		return 0, errors.New("bytes unexpected.")
+	}
+
+	return l, nil
 }
