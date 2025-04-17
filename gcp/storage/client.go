@@ -116,7 +116,7 @@ func (c *Client) Exists(filepath string) (bool, error) {
 	defer cancel()
 
 	_, err := c.Bucket.Object(filepath).Attrs(ctx)
-	if err == storage.ErrObjectNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) {
 		return false, nil
 	}
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *Client) Head(filepath string) (*data.HeadInfo, error) {
 	defer cancel()
 
 	attrs, err := c.Bucket.Object(filepath).Attrs(ctx)
-	if err == storage.ErrObjectNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) {
 		return &data.HeadInfo{
 			Exists: false,
 		}, nil
