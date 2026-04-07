@@ -85,6 +85,12 @@ type MD5Service interface {
 	MD5(filepath string) ([]byte, error)
 }
 
+// FilesizeService provides a way for a data service to return the size of a file
+// in bytes without downloading its contents.
+type FilesizeService interface {
+	Filesize(filepath string) (int64, error)
+}
+
 // SignedUrlService allows a service to return a signed URL for a filepath.
 type SignedUrlService interface {
 	SignedUrl(filepath string, tm time.Duration, cfg *SignedUrlConfig) (string, error)
