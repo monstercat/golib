@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/url"
 	"strings"
@@ -145,13 +146,13 @@ func TestClient(t *testing.T) {
 		t.Fatalf("Content is not the same. Got %s", b)
 	}
 
-	if err := client.Delete("test-file.txts"); err != storage.ErrObjectNotExist {
+	if err := client.Delete("test-file.txts"); !errors.Is(err, storage.ErrObjectNotExist) {
 		t.Fatalf("Expecting an 'object doesn't exist' error. Got %s", err)
 	}
 	if err := client.Delete("test-file.txt"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Get("test-file.txt"); err != storage.ErrObjectNotExist {
+	if _, err := client.Get("test-file.txt"); !errors.Is(err, storage.ErrObjectNotExist) {
 		t.Fatalf("Expect object doesn't exists error. Got %s", err)
 	}
 
@@ -255,7 +256,7 @@ func TestClient_RangeReader(t *testing.T) {
 		}
 	}
 
-	if _, err := client.RangeReader("does-not-exist.txt", 0, 5); err != storage.ErrObjectNotExist {
+	if _, err := client.RangeReader("does-not-exist.txt", 0, 5); !errors.Is(err, storage.ErrObjectNotExist) {
 		t.Fatalf("Expecting an 'object doesn't exist' error. Got %s", err)
 	}
 }
