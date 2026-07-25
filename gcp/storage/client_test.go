@@ -172,6 +172,94 @@ func TestClient(t *testing.T) {
 	}
 }
 
+// sliceWriterAt is an io.WriterAt which collects everything written to it into
+// a byte slice, growing as required.
+type sliceWriterAt struct {
+	b []byte
+}
+
+func (w *sliceWriterAt) WriteAt(p []byte, off int64) (int, error) {
+	if end := int(off) + len(p); end > len(w.b) {
+		w.b = append(w.b, make([]byte, end-len(w.b))...)
+	}
+	copy(w.b[off:], p)
+	return len(p), nil
+}
+
+// TestClient_RangeReader tests that Client.RangeReader returns the [start,
+// finish) range of an object, and that the reader remains usable after the
+// function returns (i.e., that the request context has not been cancelled).
+func TestClient_RangeReader(t *testing.T) {
+	content := []byte("test file content")
+	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
+		InitialObjects: []fakestorage.Object{
+			{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "Test-Bucket",
+					Name:       "test-file.txt",
+				},
+				Content: content,
+			},
+		},
+		NoListener: true,
+		Host:       "127.0.0.1",
+		Port:       1337,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Stop()
+
+	client := &Client{
+		Client: server.Client(),
+
+		// A timeout ensures the returned reader owns a cancellable context.
+		Timeout: time.Minute,
+	}
+	client.Bucket = client.Client.Bucket("Test-Bucket")
+
+	tests := []struct {
+		start    int
+		finish   int
+		expected string
+	}{
+		{0, 5, "test "},
+		{5, 9, "file"},
+		{5, len(content), "file content"},
+		{0, len(content), "test file content"},
+	}
+	for _, test := range tests {
+		r, err := client.RangeReader("test-file.txt", test.start, test.finish)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := r.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != test.expected {
+			t.Errorf("For range [%d, %d), expected %s. Got %s", test.start, test.finish, test.expected, b)
+		}
+
+		// DownloadRange is implemented on top of RangeReader, so it should
+		// provide the same bytes.
+		w := &sliceWriterAt{}
+		if err := client.DownloadRange("test-file.txt", w, test.start, test.finish); err != nil {
+			t.Fatal(err)
+		}
+		if string(w.b) != test.expected {
+			t.Errorf("For downloaded range [%d, %d), expected %s. Got %s", test.start, test.finish, test.expected, w.b)
+		}
+	}
+
+	if _, err := client.RangeReader("does-not-exist.txt", 0, 5); err != storage.ErrObjectNotExist {
+		t.Fatalf("Expecting an 'object doesn't exist' error. Got %s", err)
+	}
+}
+
 // TestChunkedUpload tests the chunked upload functionality. It ensures that Put
 // Resume work properly.
 func TestChunkedUpload(t *testing.T) {
