@@ -142,13 +142,18 @@ type ParallelService interface {
 	Upload(filepath string, filesize int, r io.Reader) error
 }
 
-// RangeService allows for a part of the file to be downloaded. Dictate the
-// [start, finish) of the download, and the result will be written into
-// io.WriterAt.
+// RangeService allows for a part of the file to be retrieved. Dictate the
+// [start, finish) of the range. DownloadRange pushes the range into an
+// io.WriterAt, while RangeReader returns the range as an io.Reader so that it
+// can be consumed directly (e.g., by a csv.Reader or bufio.Reader) without
+// having to invert the write.
 //
-// For example, if start=0 and finish=5, the function should return bytes 0-4.
+// For example, if start=0 and finish=5, both should provide bytes 0-4.
+//
+// The io.ReadCloser returned by RangeReader must be closed by the caller.
 type RangeService interface {
 	DownloadRange(filepath string, w io.WriterAt, start, finish int) error
+	RangeReader(filepath string, start, finish int) (io.ReadCloser, error)
 }
 
 // StreamService allows for data to be streamed. Pass in the writer which should be streamed to.

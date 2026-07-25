@@ -525,19 +525,53 @@ func (c *Client) Stream(filepath string, w io.Writer) error {
 func (c *Client) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
 	ww := &writeAtWrap{WriterAt: w}
 
+	r, err := c.RangeReader(filepath, start, finish)
+	if err != nil {
+		return err
+	}
+	// Closing the reader also releases the context it owns.
+	defer r.Close()
+
+	if _, err := io.Copy(ww, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RangeReader allows for a part of the file to be read. Dictate the
+// [start, finish) of the range. For example, if start=0 and finish=5, the
+// returned reader provides bytes 0...4.
+//
+// The reader is read *after* this function returns, so the context created for
+// the request cannot be cancelled here. Instead, the returned io.ReadCloser
+// owns it and cancels it on Close. The caller must therefore always close it.
+func (c *Client) RangeReader(filepath string, start, finish int) (io.ReadCloser, error) {
 	ctx, cancel := c.createContext()
-	defer cancel()
 
 	offset := int64(start)
 	length := int64(finish) - offset
 	r, err := c.Bucket.Object(filepath).NewRangeReader(ctx, offset, length)
 	if err != nil {
-		return err
+		cancel()
+		return nil, err
 	}
-	if _, err := io.Copy(ww, r); err != nil {
-		return err
-	}
-	return nil
+	return &cancelReadCloser{
+		ReadCloser: r,
+		cancel:     cancel,
+	}, nil
+}
+
+// cancelReadCloser is an io.ReadCloser tied to a cancellable context. Close
+// closes the underlying reader, then releases the context.
+type cancelReadCloser struct {
+	io.ReadCloser
+	cancel func()
+}
+
+func (r *cancelReadCloser) Close() error {
+	err := r.ReadCloser.Close()
+	r.cancel()
+	return err
 }
 
 // Objects should return an iterator for all objects in a bucket.

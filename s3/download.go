@@ -1,6 +1,7 @@
 package s3util
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
@@ -56,6 +57,29 @@ func (s *Service) Download(filepath string, w io.WriterAt, p *data.DownloadParam
 		}
 	}
 	return s.download(filepath, w, concurrency)
+}
+
+// RangeReader allows for a part of the file to be read. Dictate the
+// [start, finish) of the range. For example, if start=0 and finish=5, the
+// returned reader provides bytes 0...4.
+func (s *Service) RangeReader(filepath string, start, finish int) (io.ReadCloser, error) {
+	// An empty range has nothing to request. S3 would reject the resulting
+	// header outright.
+	if finish <= start {
+		return io.NopCloser(bytes.NewReader(nil)), nil
+	}
+
+	// The end of the HTTP range header is inclusive, whereas finish is
+	// exclusive.
+	out, err := s.Client.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(filepath),
+		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", start, finish-1)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out.Body, nil
 }
 
 func (s *Service) DownloadRange(filepath string, w io.WriterAt, start, finish int) error {
